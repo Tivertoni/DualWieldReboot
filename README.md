@@ -19,11 +19,6 @@ Requirement:
 ScriptHookVDotNet3, I strongly recommend having the latest <a href="https://github.com/scripthookvdotnet/scripthookvdotnet-nightly">Nightly Version</a>
 This script was made on game version 3179, other versions are untested.
 
-<b>How to Install:</b>
-Inside the rar there are 2 things: DualWield.dll, DualWield.ini 
-Put all of them into the "/scripts" folder, the usual for script mods, located in gta main folder
-After installation, In-game you can activate Dual Wield with X. You can change the key, turn off FakeRecoil or the new AimingAnims in the .ini config on that "/scripts" folder
-
 Bugs: 
 <ul>
 <li>First Person sucks, weapons won't accurately follow crosshair, but it still shoots on the target, it's just the animation</li>
