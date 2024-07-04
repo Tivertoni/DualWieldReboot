@@ -46,8 +46,8 @@ namespace DualWield
         private readonly Vector3 aimRotR = new Vector3(95f, 195f, 168f);
         private readonly Vector3 aimUpRotL = new Vector3(70f, 175f, 165f);
         private readonly Vector3 aimUpRotR = new Vector3(110f, 175f, 165f);
-        private readonly Vector3 aimDownRotL = new Vector3(100f, 160f, 165f);
-        private readonly Vector3 aimDownRotR = new Vector3(90f, 205f, 168f);
+        private readonly Vector3 aimDownRotL = new Vector3(100f, 160f, 175f);
+        private readonly Vector3 aimDownRotR = new Vector3(80f, 205f, 170f);
         private readonly float aimDownDeg = -30.0f;
         private readonly float aimUpDeg = 33.0f;
         private readonly Vector3 aimRotL_Dodge = new Vector3(70f, 150f, 165f);
@@ -242,11 +242,13 @@ namespace DualWield
 
                 if (Char.IsShooting && !Char.IsReloading && bothMags >= 1)
                 {
-                    GameplayCamera.Shake(CameraShake.Hand, 10f);
                     Char.Weapons.CurrentWeaponObject.RemoveParticleEffects();
                     Utils.SortPtfx();
                     Utils.surpressed = CharWpn.Components.GetSuppressorComponent().Active;
                     RaycastResult raycast = World.Raycast(GameplayCamera.Position, GameplayCamera.Direction, 9999f, IntersectFlags.Everything, Char);
+                    float recoil = Config.recoil;
+                    if (recoil > 0f)
+                        GameplayCamera.Shake(CameraShake.Hand, recoil * 40f);
                     if (WpnFilter.Contains(CharWpn.Group))
                     {
                         Utils.PlayerDamage(0.9f);
@@ -258,15 +260,15 @@ namespace DualWield
                         {
                             shootCycle = 1;
                             --bothMags;
-                            GameplayCamera.RelativeHeading += Config.recoil;
-                            GameplayCamera.RelativePitch += Config.recoil;
+                            GameplayCamera.RelativeHeading += recoil;
+                            GameplayCamera.RelativePitch += recoil;
                         }
                         else
                         {
                             shootCycle = 0;
                             --bothMags;
-                            GameplayCamera.RelativeHeading -= Config.recoil;
-                            GameplayCamera.RelativePitch += Config.recoil;
+                            GameplayCamera.RelativeHeading -= recoil;
+                            GameplayCamera.RelativePitch += recoil;
                         }
                     }
                     else if (WpnFilter2.Contains(CharWpn.Group) && gameTimer <= 0)
@@ -280,15 +282,15 @@ namespace DualWield
                         {
                             shootCycle = 1;
                             --bothMags;
-                            GameplayCamera.RelativeHeading += Config.recoil;
-                            GameplayCamera.RelativePitch += Config.recoil;
+                            GameplayCamera.RelativeHeading += recoil;
+                            GameplayCamera.RelativePitch += recoil;
                         }
                         else
                         {
                             shootCycle = 0;
                             --bothMags;
-                            GameplayCamera.RelativeHeading -= Config.recoil;
-                            GameplayCamera.RelativePitch += Config.recoil;
+                            GameplayCamera.RelativeHeading -= recoil;
+                            GameplayCamera.RelativePitch += recoil;
                         }
                         gameTimer = Game.GameTime + 75;
                     }
@@ -350,6 +352,8 @@ namespace DualWield
                 Char.Accuracy = 0;
                 Char.SetWeaponMovementClipSet(wpnAnim);
                 DualWielding = true;
+                AimDown = false;
+                AimUp = false;
             }
         }
 
@@ -450,6 +454,8 @@ namespace DualWield
             Utils.ShowPlayerWpn(true);
             shootCycle = 0;
             DualWielding = false;
+            AimDown = false;
+            AimUp = false;
         }
 
         private void EndOnPressed()
