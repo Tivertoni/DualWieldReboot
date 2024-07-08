@@ -57,7 +57,7 @@ namespace DualWield
 
         public static void ShowPlayerWpn(bool shown)
         {
-            Vector3 aimPos0 = new Vector3(-0.3f, 0f, 0f);
+            Vector3 aimPos0 = new Vector3(-0.8f, 0f, 0f);
             if (!Main.WpnOff.Contains(Main.CharWpn.Group))
             {
                 float WpnLength = Main.CharWpn.Model.Dimensions.frontTopRight.X - Main.CharWpn.Model.Dimensions.rearBottomLeft.X;
