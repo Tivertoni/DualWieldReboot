@@ -19,6 +19,9 @@ namespace DualWield
         private bool GunReset = true;
         private bool AimDown = false;
         private bool AimUp = false;
+        private bool AimUp_1 = false;
+        private bool AimUp_2 = false;
+        private bool AimDown_1 = false;
         private int shootCycle = 0;
         private int oneMag;
         private int bothMags;
@@ -33,7 +36,7 @@ namespace DualWield
         { WeaponGroup.Pistol,  WeaponGroup.Shotgun };
         private readonly List<WeaponGroup> WpnFilter2 = new List<WeaponGroup>()
         { WeaponGroup.SMG, WeaponGroup.AssaultRifle, WeaponGroup.MG };
-        private readonly List<WeaponGroup> WpnOff = new List<WeaponGroup>()
+        public static readonly List<WeaponGroup> WpnOff = new List<WeaponGroup>()
         { WeaponGroup.Melee, WeaponGroup.Parachute, WeaponGroup.Thrown, WeaponGroup.PetrolCan, WeaponGroup.Stungun,
             WeaponGroup.Unarmed, WeaponGroup.FireExtinguisher, WeaponGroup.Sniper, WeaponGroup.Heavy};
         private readonly ClipSet wpnAnim = new ClipSet("weapons@pistol@");
@@ -42,23 +45,24 @@ namespace DualWield
         private readonly CrClipAsset handAnim = new CrClipAsset("move_fall@weapons@jerrycan", "land_walk_arms");
         private readonly CrClipAsset aimDown = new CrClipAsset("anim@heists@box_carry@", "idle");
         private readonly CrClipAsset aimUp = new CrClipAsset("amb@world_human_yoga@female@base", "base_b");
+        private readonly Vector3 aimPosL = new Vector3(0.17f, 0.031f, 0.01f);
         private readonly Vector3 aimRotL = new Vector3(70f, 175f, 165f);
-        private readonly Vector3 aimRotR = new Vector3(95f, 195f, 168f);
+        public static readonly Vector3 aimPosR = new Vector3(0.17f, 0.041f, 0f);
+        public static readonly Vector3 aimRotR = new Vector3(95f, 195f, 168f);
         private readonly Vector3 aimUpRotL = new Vector3(70f, 175f, 165f);
         private readonly Vector3 aimUpRotR = new Vector3(110f, 175f, 165f);
         private readonly Vector3 aimDownRotL = new Vector3(100f, 160f, 175f);
         private readonly Vector3 aimDownRotR = new Vector3(80f, 205f, 170f);
-        private readonly float aimDownDeg = -30.0f;
-        private readonly float aimUpDeg = 33.0f;
         private readonly Vector3 aimRotL_Dodge = new Vector3(70f, 150f, 165f);
         private readonly Vector3 aimRotR_Dodge = new Vector3(95f, 200f, 168f);
-        private readonly Vector3 aimPosL = new Vector3(0.16f, 0.031f, 0.01f);
-        private readonly Vector3 aimPosR = new Vector3(0.15f, 0.041f, 0.01f);
+        private readonly float aimDownDeg = -30.0f;
+        private readonly float aimUpDeg = 33.0f;
 
         public static int Shootdodge;
         public static Type DodgeType;
         public static FieldInfo DodgeField;
         public static Weapon CharWpn;
+        private Weapon lastWpn;
         public static bool Conflict = false;
         public static bool Notified = false;
         public static float ikRecoil = 0f;
@@ -82,27 +86,19 @@ namespace DualWield
 
         private void OnTick(object sender, EventArgs e)
         {
-            //new TextElement("Debug " + , new PointF(50f, 78f), 0.5f).ScaledDraw();
             if (Game.IsLoading || Game.IsPaused) return;
             Utils.CheckConflict();
             Char = Game.Player.Character;
             CharWpn = Char.Weapons.Current;
             CheckController();
+            // new TextElement("Debug" + , new PointF(50f, 38f), 0.5f).ScaledDraw();
 
-            if (CharWpn.IsPresent && !DualWielding && CharWpn.Group != WeaponGroup.Unarmed)
+            if (CharWpn.IsPresent && !DualWielding && !WpnOff.Contains(CharWpn.Group)) 
                 Char.Weapons.CurrentWeaponObject.IsVisible = true;
-            if (GunSwap)
-            {
-                if (!WpnOff.Contains(CharWpn.Group))
-                {
-                    StartDualWield();
-                    GunSwap = false;
-                }
-            }
 
             if (!DualWielding)
                 return;
-            if (!Char.IsInVehicle())
+            if (!Char.IsInVehicle() && !WpnOff.Contains(CharWpn.Group))
             {
                 GunL = ShooterL.Weapons.CurrentWeaponObject;
                 GunR = ShooterR.Weapons.CurrentWeaponObject;
@@ -110,10 +106,16 @@ namespace DualWield
                 ShooterR.PositionNoOffset = Char.Position + new Vector3(0f, 0f, 1000f);
                 ShooterL.Weapons.Current.InfiniteAmmoClip = true;
                 ShooterR.Weapons.Current.InfiniteAmmoClip = true;
-
+                //Disable Roll & No Changing Weapon On Reload
                 if (Char.IsAiming)
                     Game.DisableControlThisFrame(GTA.Control.Jump);
-
+                if (Char.IsReloading)
+                {
+                    Game.DisableControlThisFrame(GTA.Control.Reload);
+                    Game.DisableControlThisFrame(GTA.Control.SelectWeapon); Game.DisableControlThisFrame(GTA.Control.SelectPrevWeapon); Game.DisableControlThisFrame(GTA.Control.SelectNextWeapon);
+                    Hud.HideComponentThisFrame(HudComponent.WeaponWheel);
+                }
+                //In-Cover & Jumping Pose
                 if (!Char.IsAiming && Game.IsControlJustPressed(GTA.Control.Jump))
                 {
                     if (!Char.IsPlayingAnimation(handAnim))
@@ -128,7 +130,7 @@ namespace DualWield
                 }
                 else if (!Char.IsJumping && Char.IsPlayingAnimation(handAnim))
                     Char.Task.StopScriptedAnimationTask(handAnim, AnimationBlendDelta.SlowBlendOut);
-
+                //Normal Aiming Pose
                 if (Char.IsAiming && !Char.IsReloading && !Char.IsFalling && Shootdodge == 0 && !AimDown && !AimUp)
                 {
                     if (!Char.IsPlayingAnimation(turretAnim))
@@ -136,63 +138,102 @@ namespace DualWield
                 }
                 else if (Char.IsPlayingAnimation(turretAnim))
                     Char.Task.StopScriptedAnimationTask(turretAnim, AnimationBlendDelta.SlowBlendOut);
-
-                if (Shootdodge != 0)
-                {
-                    if (Char.IsPlayingAnimation(turretAnim))
-                        Char.Task.StopScriptedAnimationTask(turretAnim);
-                    if (!Char.IsPlayingAnimation(dodgeAnim))
-                        Char.Task.PlayAnimation(dodgeAnim, AnimationBlendDelta.NormalBlendIn, AnimationBlendDelta.NormalBlendOut, -1, (AnimationFlags)49, 0f);
-                }
-                else if (Char.IsPlayingAnimation(dodgeAnim))
-                    Char.Task.StopScriptedAnimationTask(dodgeAnim);
-
+                //Weapon Pitch Trickery
                 if (Shootdodge == 0 && Config.pitchAnims)
                 {
-                    if (!AimDown && GameplayCamera.RelativePitch < aimDownDeg && Char.IsPlayingAnimation(turretAnim))
+                    //AimDown_Pose
+                    float pitch = GameplayCamera.RelativePitch;
+                    if (!AimDown && pitch < aimDownDeg && Char.IsPlayingAnimation(turretAnim))
                     {
                         if (!Char.IsPlayingAnimation(aimDown))
                         {
-                            Char.Task.PlayAnimation(aimDown, AnimationBlendDelta.WalkBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0f);
+                            Char.Task.PlayAnimation(aimDown, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0f);
                             GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimDownRotL, false, false, false, true, default);
                             GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimDownRotR, false, false, false, true, default);
                         }
                         AimDown = true;
+                        if (AimDown_1)
+                            AimDown_1 = false;
                     }
-                    if (AimDown && (GameplayCamera.RelativePitch >= aimDownDeg || !Char.IsAiming))
+                    if (AimDown && (pitch >= aimDownDeg || !Char.IsAiming))
                     {
                         if (Char.IsPlayingAnimation(aimDown))
-                            Char.Task.StopScriptedAnimationTask(aimDown, AnimationBlendDelta.WalkBlendOut);
-                        GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL, false, false, false, true, default);
-                        GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR, false, false, false, true, default);
+                            Char.Task.StopScriptedAnimationTask(aimDown, AnimationBlendDelta.SlowBlendOut);
+                        if (!AimDown_1)
+                        {
+                            GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL, false, false, false, true, default);
+                            GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR, false, false, false, true, default);
+                        }
                         AimDown = false;
                     }
-
-                    if (!AimUp && GameplayCamera.RelativePitch > aimUpDeg && Char.IsPlayingAnimation(turretAnim))
+                    //AimUp_Pose
+                    if (!AimUp && pitch > aimUpDeg && Char.IsPlayingAnimation(turretAnim))
                     {
                         if (!Char.IsPlayingAnimation(aimUp))
                         {
-                            Char.Task.PlayAnimation(aimUp, AnimationBlendDelta.WalkBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0.07f);
+                            Char.Task.PlayAnimation(aimUp, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0.07f);
                             GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimUpRotL, false, false, false, true, default);
                             GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimUpRotR, false, false, false, true, default);
                         }
                         AimUp = true;
+                        if (AimUp_2)
+                            AimUp_2 = false;
                     }
                     if (Char.GetAnimationCurrentTime(aimUp) > 0.08f)
                         Char.SetAnimationSpeed(aimUp, 0f);
-                    if (AimUp && (GameplayCamera.RelativePitch <= aimUpDeg || !Char.IsAiming))
+                    if (AimUp && (pitch <= aimUpDeg || !Char.IsAiming))
                     {
                         if (Char.IsPlayingAnimation(aimUp))
-                            Char.Task.StopScriptedAnimationTask(aimUp, AnimationBlendDelta.WalkBlendOut);
-                        GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL, false, false, false, true, default);
-                        GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR, false, false, false, true, default);
+                            Char.Task.StopScriptedAnimationTask(aimUp, AnimationBlendDelta.SlowBlendOut);
+                        if (!AimUp_1 || !AimUp_2)
+                        {
+                            GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL, false, false, false, true, default);
+                            GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR, false, false, false, true, default);
+                        }
                         AimUp = false;
                     }
+                    //Semi_AimUp
+                    float aimUpDeg_1 = aimUpDeg - 20f;
+                    float aimUpDeg_2 = aimUpDeg - 10f;
+                    Vector3 posAdj = new Vector3(0f, 0.025f, 0f);
+                    if (!AimUp_1 && pitch > aimUpDeg_1 && pitch < aimUpDeg_2 && Char.IsPlayingAnimation(turretAnim))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 15f);
+                        GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL + posAdj, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR + posAdj, aimRotR + pitchAdj, false, false, false, true, default);
+                        AimUp_1 = true;
+                    }
+                    if (!AimUp_2 && pitch > aimUpDeg_2 && Char.IsPlayingAnimation(turretAnim))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 25f);
+                        GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL + posAdj * 2 , aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR + posAdj * 2, aimRotR + pitchAdj, false, false, false, true, default);
+                        AimUp_2 = true;
+                    }
+                    //Semi_AimDown
+                    float aimDownDeg_1 = aimDownDeg + 15f;
+                    if (!AimDown_1 && pitch < aimDownDeg_1 && Char.IsPlayingAnimation(turretAnim))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 10f);
+                        
+                        GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL - pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR - pitchAdj, false, false, false, true, default);
+                        AimDown_1 = true;
+                    }
+                    //SemiAimExit
+                    if ((AimUp_1 && pitch <= aimUpDeg_1) || (AimUp_2 && pitch <= aimUpDeg_2) || (AimDown_1 && pitch >= aimDownDeg_1) || !Char.IsAiming)
+                    {
+                        GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL, false, false, false, true, default);
+                        GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR, false, false, false, true, default);
+                        if (AimUp_1) { AimUp_1 = false; }
+                        if (AimUp_2) { AimUp_2 = false; }
+                        if (AimDown_1) { AimDown_1 = false; }
+                    }
                 }
-
+                //SetIK
                 if (Char.IsAiming && !Char.IsReloading && !Char.IsJumping && GameplayCamera.FollowPedCamViewMode != CamViewMode.FirstPerson)
                 {
-                    Utils.ArmIK(true);
+                    Utils.SetIK(true);
                     float camRotZ = GameplayCamera.Rotation.Z;
                     if (Shootdodge > 0)
                     {
@@ -210,8 +251,24 @@ namespace DualWield
                     if (Shootdodge == 0)
                         Utils.SetIkTarget(Char);
                 }
-                else Utils.ArmIK(false);
-
+                //Weapon change when aiming in FirstPersonView broke the script. Fuck It!
+                if (Char.IsAiming && GameplayCamera.FollowPedCamViewMode == CamViewMode.FirstPerson)
+                {
+                    Utils.SetIK(false);
+                    Game.DisableControlThisFrame(GTA.Control.SelectWeapon); Game.DisableControlThisFrame(GTA.Control.SelectPrevWeapon); Game.DisableControlThisFrame(GTA.Control.SelectNextWeapon);
+                    Hud.HideComponentThisFrame(HudComponent.WeaponWheel);
+                }
+                //ShootdodgeSequence
+                if (Shootdodge != 0)
+                {
+                    if (Char.IsPlayingAnimation(turretAnim))
+                        Char.Task.StopScriptedAnimationTask(turretAnim);
+                    if (!Char.IsPlayingAnimation(dodgeAnim))
+                        Char.Task.PlayAnimation(dodgeAnim, AnimationBlendDelta.NormalBlendIn, AnimationBlendDelta.NormalBlendOut, -1, (AnimationFlags)49, 0f);
+                }
+                else if (Char.IsPlayingAnimation(dodgeAnim))
+                    Char.Task.StopScriptedAnimationTask(dodgeAnim);
+                //Revert Gun Pos If No Shootdodge
                 if (Shootdodge == 0)
                 {
                     if (GunMoved)
@@ -223,7 +280,7 @@ namespace DualWield
                         GunReset = true;
                     }
                 }
-
+                //ReloadSequence
                 if (Shootdodge == 0)
                 {
                     if ((Game.IsControlJustPressed(GTA.Control.Reload) || bothMags == 0) && !imReloading && bothMags != oneMag * 2)
@@ -231,24 +288,43 @@ namespace DualWield
                     if (imReloading && !GunL.IsVisible && !Char.IsReloading)
                         Reload2();
                 }
-                else if (bothMags == 0)
-                    EndDualWield();
-                if (!imReloading && !Char.IsReloading && !GunL.IsVisible && !GunR.IsVisible)
+                else
                 {
-                    Utils.ShowPlayerWpn(false);
-                    GunL.IsVisible = true;
-                    GunR.IsVisible = true;
+                    Game.DisableControlThisFrame(GTA.Control.Reload);
+                    if (bothMags == 0)
+                    {
+                        CharWpn.Ammo -= oneMag;
+                        CharWpn.AmmoInClip = 0;
+                        Game.TimeScale = 1f;
+                        Game.Player.DisableFiringThisFrame();
+                    }
                 }
-
+                //Prevent Normal Reload
+                if (CharWpn.AmmoInClip < CharWpn.MaxAmmoInClip)
+                {
+                    Game.DisableControlThisFrame(GTA.Control.Reload);
+                    if (Game.IsControlJustPressed(GTA.Control.Reload))
+                        CharWpn.AmmoInClip = CharWpn.MaxAmmoInClip;
+                }
+                //ShowWeapon    
+                if (!imReloading && !Char.IsReloading)
+                {
+                    if (!GunL.IsVisible && !GunR.IsVisible)
+                    {
+                        Utils.ShowPlayerWpn(false);
+                        GunL.IsVisible = true;
+                        GunR.IsVisible = true;
+                    }
+                    else if (Char.Weapons.CurrentWeaponObject.IsVisible)
+                        Utils.ShowPlayerWpn(false);
+                }
+                //ShootingSequence
                 if (Char.IsShooting && !Char.IsReloading && bothMags >= 1)
                 {
                     Char.Weapons.CurrentWeaponObject.RemoveParticleEffects();
                     Utils.SortPtfx();
                     Utils.surpressed = CharWpn.Components.GetSuppressorComponent().Active;
                     RaycastResult raycast = World.Raycast(GameplayCamera.Position, GameplayCamera.Direction, 9999f, IntersectFlags.Everything, Char);
-                    float recoil = Config.recoil;
-                    if (recoil > 0f)
-                        GameplayCamera.Shake(CameraShake.Hand, recoil * 40f);
                     if (WpnFilter.Contains(CharWpn.Group))
                     {
                         Utils.PlayerDamage(0.9f);
@@ -260,15 +336,11 @@ namespace DualWield
                         {
                             shootCycle = 1;
                             --bothMags;
-                            GameplayCamera.RelativeHeading += recoil;
-                            GameplayCamera.RelativePitch += recoil;
                         }
                         else
                         {
                             shootCycle = 0;
                             --bothMags;
-                            GameplayCamera.RelativeHeading -= recoil;
-                            GameplayCamera.RelativePitch += recoil;
                         }
                     }
                     else if (WpnFilter2.Contains(CharWpn.Group) && gameTimer <= 0)
@@ -282,20 +354,17 @@ namespace DualWield
                         {
                             shootCycle = 1;
                             --bothMags;
-                            GameplayCamera.RelativeHeading += recoil;
-                            GameplayCamera.RelativePitch += recoil;
                         }
                         else
                         {
                             shootCycle = 0;
                             --bothMags;
-                            GameplayCamera.RelativeHeading -= recoil;
-                            GameplayCamera.RelativePitch += recoil;
                         }
                         gameTimer = Game.GameTime + 75;
                     }
+                    Utils.FakeRecoil(shootCycle);
                 }
-                else if (GameplayCamera.IsShaking) GameplayCamera.StopShaking();
+                else if (GameplayCamera.IsShaking && Config.recoil > 0.0f) GameplayCamera.StopShaking();
                 oneMag = CharWpn.AmmoInClip;
                 if (Game.GameTime >= gameTimer && WpnFilter2.Contains(CharWpn.Group))
                     gameTimer = 0;
@@ -309,11 +378,18 @@ namespace DualWield
                     allPed.Task.Combat(Char);
                 }
             }
-
+            //WeaponSwitching
+            if (Game.IsControlJustPressed(GTA.Control.SelectWeapon))
+                lastWpn = CharWpn;
             if (Function.Call<bool>(Hash.IS_PED_SWITCHING_WEAPON, Char))
             {
-                EndDualWield();
                 GunSwap = true;
+                EndDualWield();
+            }
+            if (GunSwap && !DualWielding && !WpnOff.Contains(CharWpn.Group))
+            {
+                GunSwap = false;
+                StartDualWield();
             }
 
             if (Char.IsRagdoll)
@@ -322,7 +398,7 @@ namespace DualWield
             if (Char.IsAiming || imReloading)
                 DisplayHud();
 
-            if ((Char.IsGettingIntoVehicle || !Char.IsAlive || Char.IsSwimming || CharWpn.Ammo == 0 || WpnOff.Contains(CharWpn.Group)) && !GunSwap)
+            if ((Char.IsGettingIntoVehicle || !Char.IsAlive || Char.IsSwimming || (CharWpn.Ammo - CharWpn.AmmoInClip <= CharWpn.MaxAmmoInClip && Char.IsReloading) || WpnOff.Contains(CharWpn.Group)) && !GunSwap)
                 EndDualWield();
         }
 
@@ -330,7 +406,7 @@ namespace DualWield
         {
             if (DualWielding)
                 return;
-            else if (!WpnOff.Contains(CharWpn.Group) && CharWpn.Ammo > 0 && !Char.IsInVehicle() &&
+            else if (!WpnOff.Contains(CharWpn.Group) && CharWpn.Ammo - CharWpn.AmmoInClip >= CharWpn.MaxAmmoInClip && !Char.IsInVehicle() &&
                     !Char.IsRagdoll && Char.IsAlive && !Char.IsFalling && !Char.IsSwimming && Shootdodge == 0)
             {
                 if (Conflict)
@@ -351,9 +427,10 @@ namespace DualWield
                 bothMags = oneMag * 2;
                 Char.Accuracy = 0;
                 Char.SetWeaponMovementClipSet(wpnAnim);
-                DualWielding = true;
+                lastWpn = CharWpn;
                 AimDown = false;
                 AimUp = false;
+                DualWielding = true;
             }
         }
 
@@ -439,7 +516,7 @@ namespace DualWield
 
         private void EndDualWield()
         {
-            Utils.ArmIK(false);
+            Utils.SetIK(false);
             Char.ResetWeaponMovementClipSet();
             Char.Task.StopScriptedAnimationTask(turretAnim, AnimationBlendDelta.VerySlowBlendOut);
             ShooterL.MarkAsNoLongerNeeded();
@@ -447,15 +524,25 @@ namespace DualWield
             ShooterL.Delete();
             ShooterR.Delete();
             Char.Accuracy = accuracy;
-            CharWpn.InfiniteAmmoClip = false;
-            CharWpn.Ammo += bothMags / 2;
-            CharWpn.AmmoInClip = bothMags / 2;
+            if (!GunSwap) // Stop Ammo Loss when Weapon Changed
+            {
+                CharWpn.InfiniteAmmoClip = false;
+                CharWpn.Ammo += bothMags / 2;
+                CharWpn.AmmoInClip = bothMags / 2;
+            }
+            else
+            {
+                lastWpn.InfiniteAmmoClip = false;
+                lastWpn.Ammo += bothMags / 2;
+                lastWpn.AmmoInClip = bothMags / 2;
+            }
             Utils.PlayerDamage(1f);
             Utils.ShowPlayerWpn(true);
             shootCycle = 0;
-            DualWielding = false;
+            imReloading = false;
             AimDown = false;
             AimUp = false;
+            DualWielding = false;
         }
 
         private void EndOnPressed()

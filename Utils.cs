@@ -23,7 +23,7 @@ namespace DualWield
                 Function.Call(Hash.SET_IK_TARGET, ped, 1, null, null, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, 0, 0);
                 Function.Call(Hash.SET_IK_TARGET, ped, 2, null, null, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, 0, 0);
             }
-            else ArmIK(false);
+            else SetIK(false);
         }
 
         public static void SortPtfx()
@@ -48,7 +48,7 @@ namespace DualWield
             World.CreateParticleEffectNonLooped(new ParticleEffectAsset("core"), muzzleFx,
                 Function.Call<Vector3>(Hash.GET_ENTITY_BONE_POSTION, gun, Function.Call<int>(Hash.GET_ENTITY_BONE_INDEX_BY_NAME, gun, "gun_muzzle")), gun.Rotation);
         }
-        public static void ArmIK(bool on)
+        public static void SetIK(bool on)
         {
             Function.Call(Hash.SET_PED_CAN_ARM_IK, Main.Char, on);
             Function.Call(Hash.SET_PED_CAN_HEAD_IK, Main.Char, on);
@@ -57,7 +57,30 @@ namespace DualWield
 
         public static void ShowPlayerWpn(bool shown)
         {
-            Function.Call(Hash.SET_PED_CURRENT_WEAPON_VISIBLE, Main.Char, shown, false, false, false);
+            Vector3 aimPos0 = new Vector3(-0.3f, 0f, 0f);
+            if (!Main.WpnOff.Contains(Main.CharWpn.Group))
+            {
+                float WpnLength = Main.CharWpn.Model.Dimensions.frontTopRight.X - Main.CharWpn.Model.Dimensions.rearBottomLeft.X;
+                bool longWpn = WpnLength > 0.44f;
+                Vector3 posAdj;
+                Vector3 rotAdj;
+                if (longWpn)
+                {
+                    posAdj = new Vector3(0f, 0f, 0.01f);
+                    rotAdj = new Vector3(10f, -5f, 0f);
+                }
+                else
+                {
+                    posAdj = new Vector3(0f, 0f, -0.01f);
+                    rotAdj = new Vector3(5f, -15f, 7f);
+                }
+                if (!shown)
+                    Main.Char.Weapons.CurrentWeaponObject.AttachTo(Main.Char.Bones[Bone.SkelSpine0], aimPos0, Vector3.Zero, false, false, false, true, default);
+                else
+                    Main.Char.Weapons.CurrentWeaponObject.AttachTo(Main.Char.Bones[Bone.SkelRightHand], Main.aimPosR + posAdj, Main.aimRotR + rotAdj, false, false, false, true, default);
+                Function.Call(Hash.SET_PED_CURRENT_WEAPON_VISIBLE, Main.Char, shown, false, false, false);
+                Main.Char.Weapons.CurrentWeaponObject.IsVisible = shown;
+            }
         }
 
         public static void PlayerDamage(float damage)
@@ -79,6 +102,20 @@ namespace DualWield
             {
                 if (Function.Call<bool>(Hash.HAS_WEAPON_GOT_WEAPON_COMPONENT, playerWpn, component))
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, target, targetWpn, component);
+            }
+        }
+
+        public static void FakeRecoil(int cycle)
+        {
+            float recoil = Config.recoil;
+            if (recoil > 0.0f)
+            {
+                GameplayCamera.Shake(CameraShake.Hand, recoil * 40f);
+                GameplayCamera.RelativePitch += recoil;
+                if (cycle > 0)
+                    GameplayCamera.RelativeHeading += recoil;
+                else
+                    GameplayCamera.RelativeHeading -= recoil;
             }
         }
 
