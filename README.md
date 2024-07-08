@@ -29,14 +29,3 @@ Bugs:
 <li>Please reload in safe place, whenever you reload the character will stop</ul><b>Incompatibility</b>: 
 <b>More Gore</b> mod by IAmJFry.  If you have this, disable its PlayerHealingAnimation in its XML settings, otherwise you'll have two overlapping guns in your right hand
 <b>Addon Weapons</b> are untested, i never used addon weapon mods, so I can't guarantee this will work with those addon guns
-
-Changelog:
-1.1
-<ul type="disc">
-<li>Dual Wield now works on Shootdodge v1.3 with limitation (Can't aim 360°, aim forward only)</li>
-<li>Animation is adjusted, now the guns on FPS view don't look too high</li>
-<li>Added animations when aiming very high or very low (e.g aiming heli or enemy below you), if it looks weird for you, you can turn it off in the config</li><li>Animations altered when entering cover or jumping (the hands won't be closed together when holding rifles/smg)</li>
-<li>Added recoils to the camera (a.k.a fake recoil), adjustable in the config</li>
-<li>Player damage is raised, especially for non-auto guns</ul>1.0.
-<ul type="disc">
-<li>First release</li></ul>
