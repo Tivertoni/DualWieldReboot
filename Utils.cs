@@ -103,6 +103,8 @@ namespace DualWield
                 if (Function.Call<bool>(Hash.HAS_WEAPON_GOT_WEAPON_COMPONENT, playerWpn, component))
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, target, targetWpn, component);
             }
+			int tintID = Function.Call<int>(Hash.GET_WEAPON_OBJECT_TINT_INDEX, playerWpn);
+			Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, target, targetWpn, tintID);
         }
 
         public static void FakeRecoil(int cycle)
@@ -136,10 +138,10 @@ namespace DualWield
             {
                 XmlDocument MoreGore = new XmlDocument();
                 MoreGore.Load("scripts\\More Gore Settings.xml");
-                XmlNode HealingOn = MoreGore.SelectSingleNode("/MoreGore/Options/Healing");
-                if (HealingOn != null)
+                XmlNode MGheal = MoreGore.SelectSingleNode("/MoreGore/Options/Healing");
+                if (MGheal != null)
                 {
-                    XmlAttribute HealingAttrib = HealingOn.Attributes["PlayHealingAnimation"];
+                    XmlAttribute HealingAttrib = MGheal.Attributes["PlayHealingAnimation"];
                     if (HealingAttrib != null)
                     {
                         if (bool.TryParse(HealingAttrib.Value, out bool HealingVal))
