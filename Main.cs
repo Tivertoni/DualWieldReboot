@@ -421,8 +421,8 @@ namespace DualWield
                 Utils.ShowPlayerWpn(false);
                 if (Char.GetAnimationCurrentTime(new CrClipAsset("melee@holster", "unholster")) < 1.0f)
                     Wait(0);
-                ShooterL = CreateFakeShooter("L");
-                ShooterR = CreateFakeShooter("R");
+                ShooterL = CreateFakeShooter(1);
+                ShooterR = CreateFakeShooter(2);
                 CharWpn.InfiniteAmmoClip = true;
                 bothMags = oneMag * 2;
                 Char.Accuracy = 0;
@@ -434,7 +434,7 @@ namespace DualWield
             }
         }
 
-        private Ped CreateFakeShooter(string LR)
+        private Ped CreateFakeShooter(int LR)
         {
             Ped ped = World.CreatePed((Model)PedHash.Famdnf01GMY, Char.Position);
             ped.IsVisible = false;
@@ -443,7 +443,7 @@ namespace DualWield
             ped.Weapons.Give(CharWpn.Hash, 400, true, true);
             Utils.GetAttachments(ped);
             ped.Weapons.CurrentWeaponObject.IsVisible = true;
-            ped.Weapons.Select(ped.Weapons.BestWeapon, true);
+            ped.Weapons.Select(ped.Weapons[CharWpn.Hash], true);
             ped.RelationshipGroup = Char.RelationshipGroup;
             ped.CanRagdoll = false;
             ped.IsCollisionEnabled = false;
@@ -451,7 +451,7 @@ namespace DualWield
             ped.BlockPermanentEvents = true;
             ped.Accuracy = 0;
             ped.Weapons.CurrentWeaponObject.Detach();
-            if (LR == "L")
+            if (LR == 1)
                 ped.Weapons.CurrentWeaponObject.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL, false, false, false, true, default);
             else ped.Weapons.CurrentWeaponObject.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR, false, false, false, true, default);
             return ped;

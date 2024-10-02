@@ -54,7 +54,7 @@
   <ItemGroup>
     <Reference Include="ScriptHookVDotNet3, Version=3.6.0.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Games\GTAV\ScriptHookVDotNet3.dll</HintPath>
+      <HintPath>C:\Games\GTAV\ScriptHookVDotNet3.dll</HintPath>
     </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -68,6 +68,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>COPY "$(TargetPath)" "D:\Games\GTAV\scripts"</PostBuildEvent>
+    <PostBuildEvent>COPY "$(TargetPath)" "C:\Games\GTAV\scripts"</PostBuildEvent>
   </PropertyGroup>
 </Project>

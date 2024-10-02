@@ -18,10 +18,10 @@ namespace DualWield
             RaycastResult raycast1 = World.Raycast(GameplayCamera.Position, GameplayCamera.Direction, 9999f, IntersectFlags.Everything, Main.Char);
             if (raycast1.DidHit)
             {
-                Function.Call(Hash.SET_IK_TARGET, ped, 3, null, null, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, -8, 8);
-                Function.Call(Hash.SET_IK_TARGET, ped, 4, null, null, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, -8, 8);
-                Function.Call(Hash.SET_IK_TARGET, ped, 1, null, null, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, 0, 0);
-                Function.Call(Hash.SET_IK_TARGET, ped, 2, null, null, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, 0, 0);
+                Function.Call(Hash.SET_IK_TARGET, ped, 3, null, -1, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, -8, 8);
+                Function.Call(Hash.SET_IK_TARGET, ped, 4, null, -1, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, -8, 8);
+                Function.Call(Hash.SET_IK_TARGET, ped, 1, null, -1, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, 0, 0);
+                Function.Call(Hash.SET_IK_TARGET, ped, 2, null, -1, raycast1.HitPosition.X, raycast1.HitPosition.Y, raycast1.HitPosition.Z, 64, 0, 0);
             }
             else SetIK(false);
         }
@@ -97,13 +97,15 @@ namespace DualWield
         public static void GetAttachments(Ped target)
         {
             Entity playerWpn = Main.Char.Weapons.CurrentWeaponObject;
-            WeaponHash targetWpn = target.Weapons.Current.Hash;
-            foreach (WeaponComponentHash component in Enum.GetValues(typeof(WeaponComponentHash)))
+            Entity targetWpn = target.Weapons.CurrentWeaponObject;
+            foreach (var component in WeaponComponent.GetAllHashes()) //Thanks to SHVDN NativeMemory
             {
                 if (Function.Call<bool>(Hash.HAS_WEAPON_GOT_WEAPON_COMPONENT, playerWpn, component))
-                    Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, target, targetWpn, component);
+                {
+                    Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_WEAPON_OBJECT, targetWpn, component);
+                }
             }
-			int tintID = Function.Call<int>(Hash.GET_WEAPON_OBJECT_TINT_INDEX, playerWpn);
+            int tintID = Function.Call<int>(Hash.GET_WEAPON_OBJECT_TINT_INDEX, playerWpn);
 			Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, target, targetWpn, tintID);
         }
 
