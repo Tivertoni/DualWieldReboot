@@ -93,7 +93,7 @@ namespace DualWield
             CheckController();
             // new TextElement("Debug" + , new PointF(50f, 38f), 0.5f).ScaledDraw();
 
-            if (CharWpn.IsPresent && !DualWielding && !WpnOff.Contains(CharWpn.Group)) 
+            if (CharWpn.IsPresent && !DualWielding && !WpnOff.Contains(CharWpn.Group))
                 Char.Weapons.CurrentWeaponObject.IsVisible = true;
 
             if (!DualWielding)
@@ -206,7 +206,7 @@ namespace DualWield
                     if (!AimUp_2 && pitch > aimUpDeg_2 && Char.IsPlayingAnimation(turretAnim))
                     {
                         Vector3 pitchAdj = new Vector3(0f, 0f, 25f);
-                        GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL + posAdj * 2 , aimRotL + pitchAdj, false, false, false, true, default);
+                        GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL + posAdj * 2, aimRotL + pitchAdj, false, false, false, true, default);
                         GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR + posAdj * 2, aimRotR + pitchAdj, false, false, false, true, default);
                         AimUp_2 = true;
                     }
@@ -215,7 +215,7 @@ namespace DualWield
                     if (!AimDown_1 && pitch < aimDownDeg_1 && Char.IsPlayingAnimation(turretAnim))
                     {
                         Vector3 pitchAdj = new Vector3(0f, 0f, 10f);
-                        
+
                         GunL.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL - pitchAdj, false, false, false, true, default);
                         GunR.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR - pitchAdj, false, false, false, true, default);
                         AimDown_1 = true;
@@ -438,22 +438,28 @@ namespace DualWield
         {
             Ped ped = World.CreatePed((Model)PedHash.Famdnf01GMY, Char.Position);
             ped.IsVisible = false;
+            ped.Weapons.Give(CharWpn.Hash, 999, true, true);
+            Utils.GetAttachments(ped);
+            ped.Weapons.CurrentWeaponObject.IsVisible = false;
+            ped.Weapons.Select(CharWpn.Hash, true);
             Function.Call(Hash.SET_ENTITY_PROOFS, ped, true, true, true, true, true, true, true, true);
             Function.Call(Hash.STOP_PED_SPEAKING, ped, true);
-            ped.Weapons.Give(CharWpn.Hash, 400, true, true);
-            Utils.GetAttachments(ped);
-            ped.Weapons.CurrentWeaponObject.IsVisible = true;
-            ped.Weapons.Select(ped.Weapons[CharWpn.Hash], true);
-            ped.RelationshipGroup = Char.RelationshipGroup;
             ped.CanRagdoll = false;
             ped.IsCollisionEnabled = false;
             ped.IsPositionFrozen = true;
             ped.BlockPermanentEvents = true;
+            ped.RelationshipGroup = Char.RelationshipGroup;
             ped.Accuracy = 0;
             ped.Weapons.CurrentWeaponObject.Detach();
             if (LR == 1)
+            {
                 ped.Weapons.CurrentWeaponObject.AttachTo(Char.Bones[Bone.SkelLeftHand], aimPosL, aimRotL, false, false, false, true, default);
-            else ped.Weapons.CurrentWeaponObject.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR, false, false, false, true, default);
+            }
+            else
+            {
+                ped.Weapons.CurrentWeaponObject.AttachTo(Char.Bones[Bone.SkelRightHand], aimPosR, aimRotR, false, false, false, true, default);
+            }
+            ped.Weapons.CurrentWeaponObject.IsVisible = true;
             return ped;
         }
 

@@ -96,17 +96,24 @@ namespace DualWield
 
         public static void GetAttachments(Ped target)
         {
-            Entity playerWpn = Main.Char.Weapons.CurrentWeaponObject;
-            Entity targetWpn = target.Weapons.CurrentWeaponObject;
+            Entity playerWpnObj = Main.Char.Weapons.CurrentWeaponObject;
+            Entity targetWpnObj = target.Weapons.CurrentWeaponObject;
+            WeaponHash targetWpn = target.Weapons.Current;
+            WeaponHash playerWpn = target.Weapons.Current.Hash;
             foreach (var component in WeaponComponent.GetAllHashes()) //Thanks to SHVDN NativeMemory
             {
-                if (Function.Call<bool>(Hash.HAS_WEAPON_GOT_WEAPON_COMPONENT, playerWpn, component))
+                if (Function.Call<bool>(Hash.HAS_WEAPON_GOT_WEAPON_COMPONENT, playerWpnObj, component))
                 {
-                    Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_WEAPON_OBJECT, targetWpn, component);
+                    Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, target, targetWpn, component);
+                    int tintCompID = Function.Call<int>(Hash.GET_WEAPON_OBJECT_COMPONENT_TINT_INDEX, playerWpnObj, component);
+                    Function.Call(Hash.SET_WEAPON_OBJECT_COMPONENT_TINT_INDEX, targetWpnObj, component, tintCompID);
                 }
             }
-            int tintID = Function.Call<int>(Hash.GET_WEAPON_OBJECT_TINT_INDEX, playerWpn);
-			Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, target, targetWpn, tintID);
+
+            int tintID = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, Main.Char, playerWpn);
+            Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, target, targetWpn, tintID);
+            int camoID = Function.Call<int>(Hash.GET_PED_WEAPON_CAMO_INDEX, Main.Char, playerWpnObj);
+            Function.Call(Hash.SET_WEAPON_OBJECT_CAMO_INDEX, target, targetWpnObj, camoID);
         }
 
         public static void FakeRecoil(int cycle)
