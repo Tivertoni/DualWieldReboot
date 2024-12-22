@@ -67,6 +67,9 @@ namespace DualWield
         public static bool Notified = false;
         public static float ikRecoil = 0f;
 
+        private float padButtonTimer = 0f; // Variable to track hold time
+        private float padButtonTimer2 = 0f; // Variable to track cooldown time
+
         public Main()
         {
             Tick += OnTick;
@@ -571,12 +574,35 @@ namespace DualWield
 
         private void CheckController()
         {
-            if (Game.LastInputMethod == InputMethod.GamePad && Char.IsAiming && Game.IsControlJustPressed(GTA.Control.PhoneRight))
+            if (Game.LastInputMethod == InputMethod.GamePad && Char.IsAiming)
             {
-                if (!DualWielding)
-                    StartDualWield();
+                if (padButtonTimer2 > 0)
+                {
+                    padButtonTimer2 -= Game.LastFrameTime * 1000;
+                    return;
+                }
+
+                if (Game.IsControlPressed(GTA.Control.PhoneRight))
+                {
+                    padButtonTimer += Game.LastFrameTime * 1000; 
+                    if (padButtonTimer >= 1000f) // Holding timer
+                    {
+                        if (!DualWielding)
+                        {
+                            StartDualWield();
+                            padButtonTimer2 = 3000f; // Cooldown after gamepad hold button
+                        }
+                        else
+                        {
+                            EndOnPressed();
+                            padButtonTimer2 = 3000f;
+                        }
+                    }
+                }
                 else
-                    EndOnPressed();
+                {
+                    padButtonTimer = 0f;
+                }
             }
         }
     }
