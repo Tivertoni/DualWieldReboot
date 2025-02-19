@@ -25,9 +25,19 @@ namespace DualWield
         private bool AimUp_Micro3 = false;
         private bool AimUp_Micro4 = false;
         private bool AimUp_Micro5 = false;
+        private bool AimUp_Micro6 = false;
+        private bool AimUp_Micro7 = false;
+        private bool AimUp_Micro8 = false;
+        private bool AimUp_Micro9 = false;
+        private bool AimUp_Micro10 = false;
+        private bool AimUp_Micro11 = false;
         private bool AimDown_Micro1 = false;
         private bool AimDown_Micro2 = false;
         private bool AimDown_Micro3 = false;
+        private bool AimDown_Micro4 = false;
+        private bool AimDown_Micro5 = false;
+        private bool AimDown_Micro6 = false;
+        private bool AimDown_Micro7 = false;
         private int shootCycle = 0;
         private int oneMag;
         private int bothMags;
@@ -61,10 +71,10 @@ namespace DualWield
         private readonly Vector3 aimDownRotR = new Vector3(85f, 200f, 165f);
         private readonly Vector3 aimRotL_Dodge = new Vector3(70f, 150f, 165f);
         private readonly Vector3 aimRotR_Dodge = new Vector3(95f, 200f, 168f);
-        private Vector3 adj_AimPosL = Vector3.Zero;
-        private Vector3 adj_AimPosR = Vector3.Zero;
+        private Vector3 aimPosL_gunAdj = Vector3.Zero;
+        private Vector3 aimPosR_gunAdj = Vector3.Zero;
         private readonly float aimDownDeg = -45.0f;
-        private readonly float aimUpDeg = 33.0f;
+        private readonly float aimUpDeg = 36.0f;
         public static int Shootdodge;
         public static Type DodgeType;
         public static FieldInfo DodgeField;
@@ -129,13 +139,14 @@ namespace DualWield
                     Hud.HideComponentThisFrame(HudComponent.WeaponWheel);
                 }
                 //In-Cover & Jumping Pose
-                if (!MC.IsAiming && Game.IsControlJustPressed(GTA.Control.Jump))
+                if (!MC.IsAiming && MC.IsJumping)
                 {
                     if (!MC.IsPlayingAnimation(handAnim))
                         MC.Task.PlayAnimation(handAnim, AnimationBlendDelta.InstantBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)48, 0f);
                 }
-                else if ((MC.IsInCover || MC.IsGoingIntoCover) && !MC.IsAiming)
+                else if ((MC.IsInCover || MC.IsGoingIntoCover) && !Function.Call<bool>(Hash.IS_PED_SWITCHING_WEAPON, MC) && !MC.IsAiming)
                 {
+                    Utils.SetIK(false);
                     if (!MC.IsPlayingAnimation(handAnim))
                         MC.Task.PlayAnimation(handAnim, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.InstantBlendOut, -1, (AnimationFlags)48, 0f);
                     else if (MC.GetAnimationCurrentTime(handAnim) > 0.2f)
@@ -161,21 +172,21 @@ namespace DualWield
                         if (!MC.IsPlayingAnimation(aimDown))
                         {
                             MC.Task.PlayAnimation(aimDown, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0f);
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL, aimDownRotL, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR, aimDownRotR, false, false, false, true, default);
+                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimDownRotL, false, false, false, true, default);
+                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimDownRotR, false, false, false, true, default);
                         }
                         AimDown = true;
-                        if (AimDown_Micro3)
-                            AimDown_Micro3 = false;
+                        if (AimDown_Micro7)
+                            AimDown_Micro7 = false;
                     }
                     if (AimDown && (pitch >= aimDownDeg || !MC.IsAiming))
                     {
                         if (MC.IsPlayingAnimation(aimDown))
                             MC.Task.StopScriptedAnimationTask(aimDown, AnimationBlendDelta.SlowBlendOut);
-                        if (!AimDown_Micro1 || !AimDown_Micro2 || !AimDown_Micro3)
+                        if (!AimDown_Micro1 || !AimDown_Micro2 || !AimDown_Micro3 || !AimDown_Micro4 || !AimDown_Micro5 || !AimDown_Micro6 || !AimDown_Micro7)
                         {
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL, aimRotL, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR, aimRotR, false, false, false, true, default);
+                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
+                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
                         }
                         AimDown = false;
                     }
@@ -185,12 +196,12 @@ namespace DualWield
                         if (!MC.IsPlayingAnimation(aimUp))
                         {
                             MC.Task.PlayAnimation(aimUp, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0.07f);
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL, aimUpRotL, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR, aimUpRotR, false, false, false, true, default);
+                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimUpRotL, false, false, false, true, default);
+                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimUpRotR, false, false, false, true, default);
                         }
                         AimUp = true;
-                        if (AimUp_Micro5)
-                            AimUp_Micro5 = false;
+                        if (AimUp_Micro11)
+                            AimUp_Micro11 = false;
                     }
                     if (MC.GetAnimationCurrentTime(aimUp) > 0.08f)
                         MC.SetAnimationSpeed(aimUp, 0f);
@@ -198,97 +209,196 @@ namespace DualWield
                     {
                         if (MC.IsPlayingAnimation(aimUp))
                             MC.Task.StopScriptedAnimationTask(aimUp, AnimationBlendDelta.SlowBlendOut);
-                        if (!AimUp_Micro1 || !AimUp_Micro2 || !AimUp_Micro3 || !AimUp_Micro4 || !AimUp_Micro5)
+                        if (!AimUp_Micro1 || !AimUp_Micro2 || !AimUp_Micro3 || !AimUp_Micro4 || !AimUp_Micro5 || !AimUp_Micro6 || !AimUp_Micro7 || !AimUp_Micro8 || !AimUp_Micro9 || !AimUp_Micro10 || !AimUp_Micro11)
                         {
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL, aimRotL, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR, aimRotR, false, false, false, true, default);
+                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
+                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
                         }
                         AimUp = false;
                     }
+
+
                     //Semi_AimUp
-                    float aimUpDeg_1 = aimUpDeg - 27.5f;
-                    float aimUpDeg_2 = aimUpDeg - 22.5f;
-                    float aimUpDeg_3 = aimUpDeg - 17.5f;
-                    float aimUpDeg_4 = aimUpDeg - 12.5f;
-                    float aimUpDeg_5 = aimUpDeg - 7.5f;
-                    Vector3 posAdjUp = new Vector3(0f, 0.020f, 0f);
+                    float aimUpDeg_1 = aimUpDeg - 33f;
+                    float aimUpDeg_2 = aimUpDeg - 30f;
+                    float aimUpDeg_3 = aimUpDeg - 27f;
+                    float aimUpDeg_4 = aimUpDeg - 24f;
+                    float aimUpDeg_5 = aimUpDeg - 21f;
+                    float aimUpDeg_6 = aimUpDeg - 18f;
+                    float aimUpDeg_7 = aimUpDeg - 15f;
+                    float aimUpDeg_8 = aimUpDeg - 12f;
+                    float aimUpDeg_9 = aimUpDeg - 9f;
+                    float aimUpDeg_10 = aimUpDeg - 6;
+                    float aimUpDeg_11 = aimUpDeg - 3f;
+
+                    Vector3 posUp_Adj = new Vector3 (0f, 0.020f,0f);
+
                     if (!AimUp_Micro1 && pitch > aimUpDeg_1 && pitch < aimUpDeg_2 && MC.IsPlayingAnimation(turretAnim))
                     {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 10f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL + posAdjUp, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR + posAdjUp, aimRotR + pitchAdj, false, false, false, true, default);
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 4f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 0.25f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 0.25f, aimRotR + pitchAdj, false, false, false, true, default);
                         AimUp_Micro1 = true;
-                        AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = false;
+                        AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
                     }
                     if (!AimUp_Micro2 && pitch > aimUpDeg_2 && MC.IsPlayingAnimation(turretAnim))
                     {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 15f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL + posAdjUp * 1.25f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR + posAdjUp * 1.25f, aimRotR + pitchAdj, false, false, false, true, default);
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 7.6f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 0.5f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 0.5f, aimRotR + pitchAdj, false, false, false, true, default);
                         AimUp_Micro2 = true;
-                        AimUp_Micro1 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = false;
+                        AimUp_Micro1 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
                     }
                     if (!AimUp_Micro3 && pitch > aimUpDeg_3 && MC.IsPlayingAnimation(turretAnim))
                     {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 20f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL + posAdjUp * 1.5f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR + posAdjUp * 1.5f, aimRotR + pitchAdj, false, false, false, true, default);
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 11.2f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 0.75f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj, aimRotR + pitchAdj, false, false, false, true, default);
                         AimUp_Micro3 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro4 = AimUp_Micro5 = false;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
                     }
                     if (!AimUp_Micro4 && pitch > aimUpDeg_4 && MC.IsPlayingAnimation(turretAnim))
                     {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 25f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL + posAdjUp * 2f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR + posAdjUp * 2f, aimRotR + pitchAdj, false, false, false, true, default);
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 14.8f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 1.25f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 1.25f, aimRotR + pitchAdj, false, false, false, true, default);
                         AimUp_Micro4 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro5 = false;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
                     }
                     if (!AimUp_Micro5 && pitch > aimUpDeg_5 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
                     {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 35f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL + posAdjUp * 2f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR + posAdjUp * 2f, aimRotR + pitchAdj, false, false, false, true, default);
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 18.4f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 1.45f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 1.45f, aimRotR + pitchAdj, false, false, false, true, default);
                         AimUp_Micro5 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = false;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
                     }
+                    if (!AimUp_Micro6 && pitch > aimUpDeg_6 && MC.IsPlayingAnimation(turretAnim))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 22f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 1.65f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 1.65f, aimRotR + pitchAdj, false, false, false, true, default);
+                        AimUp_Micro6 = true;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
+                    }
+                    if (!AimUp_Micro7 && pitch > aimUpDeg_7 && MC.IsPlayingAnimation(turretAnim))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 25.6f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 1.85f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 1.85f, aimRotR + pitchAdj, false, false, false, true, default);
+                        AimUp_Micro7 = true;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
+                    }
+                    if (!AimUp_Micro8 && pitch > aimUpDeg_8 && MC.IsPlayingAnimation(turretAnim))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 29.2f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 2f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 2f, aimRotR + pitchAdj, false, false, false, true, default);
+                        AimUp_Micro8 = true;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
+                    }
+                    if (!AimUp_Micro9 && pitch > aimUpDeg_9 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 32.8f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 2f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 2f, aimRotR + pitchAdj, false, false, false, true, default);
+                        AimUp_Micro9 = true;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro10 = AimUp_Micro11 = false;
+                    }
+                    if (!AimUp_Micro10 && pitch > aimUpDeg_10 && MC.IsPlayingAnimation(turretAnim))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 36.4f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 2.25f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 2.25f, aimRotR + pitchAdj, false, false, false, true, default);
+                        AimUp_Micro8 = true;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro11 = false;
+                    }
+                    if (!AimUp_Micro11 && pitch > aimUpDeg_11 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 40f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 2.5f, aimRotL + pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 2.5f, aimRotR + pitchAdj, false, false, false, true, default);
+                        AimUp_Micro9 = true;
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = false;
+                    }
+
                     //Semi_AimDown
-                    float aimDownDeg_1 = aimDownDeg + 35f;
-                    float aimDownDeg_2 = aimDownDeg + 25f;
-                    float aimDownDeg_3 = aimDownDeg + 15f;
+                    float aimDownDeg_1 = aimDownDeg + 42.5f;
+                    float aimDownDeg_2 = aimDownDeg + 37.5f;
+                    float aimDownDeg_3 = aimDownDeg + 32.5f;
+                    float aimDownDeg_4 = aimDownDeg + 27.5f;
+                    float aimDownDeg_5 = aimDownDeg + 22.5f;
+                    float aimDownDeg_6 = aimDownDeg + 17.5f;
+                    float aimDownDeg_7 = aimDownDeg + 12.5f;
                     if (!AimDown_Micro1 && pitch < aimDownDeg_1 && MC.IsPlayingAnimation(turretAnim))
                     {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 10f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL + new Vector3(0f, -0.005f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR + new Vector3(0f, -0.015f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 5f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL - pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR - pitchAdj, false, false, false, true, default);
                         AimDown_Micro1 = true;
-                        AimDown_Micro2 = AimDown_Micro3 = false;
+                        AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
                     }
                     if (!AimDown_Micro2 && pitch < aimDownDeg_2 && MC.IsPlayingAnimation(turretAnim))
                     {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 20f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL + new Vector3(0f, -0.015f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR + new Vector3(0f, -0.025f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 10f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.005f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.005f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
                         AimDown_Micro2 = true;
-                        AimDown_Micro1 = AimDown_Micro3 = false;
+                        AimDown_Micro1 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
                     }
                     if (!AimDown_Micro3 && pitch < aimDownDeg_3 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
                     {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 30f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL + new Vector3(0f, -0.025f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR + new Vector3(0f, -0.035f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 15f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.005f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.015f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
                         AimDown_Micro3 = true;
-                        AimDown_Micro1 = AimDown_Micro2 = false;
+                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
                     }
+                    if (!AimDown_Micro4 && pitch < aimDownDeg_4 && MC.IsPlayingAnimation(turretAnim))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 20f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.015f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.025f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
+                        AimDown_Micro4 = true;
+                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
+                    }
+                    if (!AimDown_Micro5 && pitch < aimDownDeg_5 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 25f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.015f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.025f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
+                        AimDown_Micro5 = true;
+                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro6 = AimDown_Micro7 = false;
+                    }
+                    if (!AimDown_Micro6 && pitch < aimDownDeg_6 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 30f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.025f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.035f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
+                        AimDown_Micro6 = true;
+                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro7 = false;
+                    }
+                    if (!AimDown_Micro7 && pitch < aimDownDeg_7 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
+                    {
+                        Vector3 pitchAdj = new Vector3(0f, 0f, 35f);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.025f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.035f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
+                        AimDown_Micro7 = true;
+                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = false;
+                    }
+
                     //SemiAimExit
                     if (!MC.IsAiming || (AimUp_Micro1 && pitch <= aimUpDeg_1) || (AimDown_Micro1 && pitch >= aimDownDeg_1))
                     {
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL, aimRotL, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR, aimRotR, false, false, false, true, default);
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = false;
-                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = false;
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
+                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10  = AimUp_Micro11 = false;
+                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
                     }
                 }
+
+
+
                 //SetIK
                 if (MC.IsAiming && !MC.IsReloading && !MC.IsJumping && GameplayCamera.FollowPedCamViewMode != CamViewMode.FirstPerson)
                 {
@@ -298,8 +408,8 @@ namespace DualWield
                     {
                         if (!GunMoved)
                         {
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL, aimRotL_Dodge, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR, aimRotR_Dodge, false, false, false, true, default);
+                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL_Dodge, false, false, false, true, default);
+                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR_Dodge, false, false, false, true, default);
                         }
                         GameplayCamera.SetThirdPersonCameraRelativeHeadingLimitsThisUpdate(-23.5f, 23.5f);
                         GunMoved = true;
@@ -334,8 +444,8 @@ namespace DualWield
                         GunMoved = false;
                     if (!GunMoved && !GunReset)
                     {
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL, aimRotL, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR, aimRotR, false, false, false, true, default);
+                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
+                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
                         GunReset = true;
                     }
                 }
@@ -511,11 +621,11 @@ namespace DualWield
             ped.Weapons.CurrentWeaponObject.Detach();
             if (LR == 1)
             {
-                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + adj_AimPosL, aimRotL, false, false, false, true, default);
+                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
             }
             else
             {
-                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + adj_AimPosR, aimRotR, false, false, false, true, default);
+                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
             }
             ped.Weapons.CurrentWeaponObject.IsVisible = true;
             return ped;
@@ -639,13 +749,13 @@ namespace DualWield
         {
             if (Utils.GunNeedAdjustment.Contains(MC_Wpn))
             {
-                adj_AimPosL = new Vector3(-0.015f, 0.030f, -0.015f);
-                adj_AimPosR = new Vector3(-0.035f, 0.025f, 0f);
+                aimPosL_gunAdj = new Vector3(-0.015f, 0.030f, -0.015f);
+                aimPosR_gunAdj = new Vector3(-0.035f, 0.025f, 0f);
             }
             else
             {
-                adj_AimPosL = Vector3.Zero;
-                adj_AimPosR = Vector3.Zero;
+                aimPosL_gunAdj = Vector3.Zero;
+                aimPosR_gunAdj = Vector3.Zero;
             }
         }
 
