@@ -9,127 +9,190 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 
+
+//MC_Wpn InfiniteAmmoClip to fix rpgs reload visually
+
 namespace DualWield
 {
     public class Main : Script
     {
         public static bool DualWielding = false;
+        private bool wasDualWielding = false;
+        private bool isMinigun;
         private bool imReloading = false;
-        private bool GunSwap = false;
-        private bool GunMoved = false;
-        private bool GunReset = true;
-        private bool AimDown = false;
-        private bool AimUp = false;
-        private bool AimUp_Micro1 = false;
-        private bool AimUp_Micro2 = false;
-        private bool AimUp_Micro3 = false;
-        private bool AimUp_Micro4 = false;
-        private bool AimUp_Micro5 = false;
-        private bool AimUp_Micro6 = false;
-        private bool AimUp_Micro7 = false;
-        private bool AimUp_Micro8 = false;
-        private bool AimUp_Micro9 = false;
-        private bool AimUp_Micro10 = false;
-        private bool AimUp_Micro11 = false;
-        private bool AimDown_Micro1 = false;
-        private bool AimDown_Micro2 = false;
-        private bool AimDown_Micro3 = false;
-        private bool AimDown_Micro4 = false;
-        private bool AimDown_Micro5 = false;
-        private bool AimDown_Micro6 = false;
-        private bool AimDown_Micro7 = false;
-        private int shootCycle = 0;
-        private int oneMag;
-        private int bothMags;
-        private int accuracy;
-        private Ped ShooterL;
-        private Ped ShooterR;
-        private Entity GunL;
-        private Entity GunR;
+        private bool dummyLoaded = false;
+        private bool unlimitedAmmo = false;
+        private bool gunSwapped = false;
+        private bool noScoping = false;
+        private bool aiming = false;
+
+        private int? dualWieldEndTime = null;
+        private int? aimStartTime = null;
+        private int? aimReleaseTime = null;
+
+        private int LeftMag;
+        private int RightMag;
+        private int imReloadingPhase = 0; // 0 = not reloading, 1 = reloading left, 2 = reloading right
+        private int snipingEndTime = 0;
+        private readonly int shootReadyDelay = 600; //wait for aiming anim to finish pointing gun
+        private readonly int aimExitDelay = 800; //hold crosshair for this long after done shooting
+
+        private const int recoilCooldown = 180;
+        private int lastRecoilTime = 0;
+
+        private float animPitchSource;
+        private float recoilValue;
+        private float reloadTimer = 0f;
+        readonly float reloadDelay = 0.25f;
+        private float padButtonTimer = 0f;
+        private float padButtonTimer2 = 0f;
+
+        private Model dummy = (Model)PedHash.Famdnf01GMY;
+        public static Ped ShooterL;
+        public static Ped ShooterR;
+
+        public static Entity GunL;
+        public static Entity GunR;
         public static Ped MC = Game.Player.Character;
-        private int gameTimer;
-        private readonly List<WeaponGroup> WpnFilter = new List<WeaponGroup>()
-        { WeaponGroup.Pistol,  WeaponGroup.Shotgun };
-        private readonly List<WeaponGroup> WpnFilter2 = new List<WeaponGroup>()
-        { WeaponGroup.SMG, WeaponGroup.AssaultRifle, WeaponGroup.MG };
-        public static readonly List<WeaponGroup> WpnOff = new List<WeaponGroup>()
-        { WeaponGroup.Melee, WeaponGroup.Parachute, WeaponGroup.Thrown, WeaponGroup.PetrolCan, WeaponGroup.Stungun,
-            WeaponGroup.Unarmed, WeaponGroup.FireExtinguisher, WeaponGroup.Sniper, WeaponGroup.Heavy};
-        private readonly ClipSet wpnAnim = new ClipSet("weapons@pistol@");
-        private readonly CrClipAsset turretAnim = new CrClipAsset("anim@veh@armordillo@turret@base", "sit");
-        private readonly CrClipAsset dodgeAnim = new CrClipAsset("amb@world_human_sunbathe@female@front@base", "base");
-        private readonly CrClipAsset handAnim = new CrClipAsset("move_fall@weapons@jerrycan", "land_walk_arms");
-        private readonly CrClipAsset aimDown = new CrClipAsset("anim@heists@box_carry@", "idle");
-        private readonly CrClipAsset aimUp = new CrClipAsset("amb@world_human_yoga@female@base", "base_b");
-        private Vector3 aimPosL = new Vector3(0.17f, 0.021f, 0.01f);
-        private readonly Vector3 aimRotL = new Vector3(70f, 180f, 165f);
-        public static Vector3 aimPosR = new Vector3(0.17f, 0.031f, 0f);
-        public static readonly Vector3 aimRotR = new Vector3(100f, 195f, 168f);
-        private readonly Vector3 aimUpRotL = new Vector3(70f, 175f, 165f);
-        private readonly Vector3 aimUpRotR = new Vector3(110f, 175f, 165f);
-        private readonly Vector3 aimDownRotL = new Vector3(90f, 155f, 175f);
-        private readonly Vector3 aimDownRotR = new Vector3(85f, 200f, 165f);
-        private readonly Vector3 aimRotL_Dodge = new Vector3(70f, 150f, 165f);
-        private readonly Vector3 aimRotR_Dodge = new Vector3(95f, 200f, 168f);
-        private Vector3 aimPosL_gunAdj = Vector3.Zero;
-        private Vector3 aimPosR_gunAdj = Vector3.Zero;
-        private readonly float aimDownDeg = -45.0f;
-        private readonly float aimUpDeg = 36.0f;
+
+        public static readonly List<WeaponGroup> AllowedGuns = new List<WeaponGroup>()
+        { WeaponGroup.Pistol, WeaponGroup.SMG, WeaponGroup.AssaultRifle, WeaponGroup.MG, WeaponGroup.Shotgun,
+            WeaponGroup.Heavy, WeaponGroup.Sniper };
+
+        private readonly ClipSet moveClipset = new ClipSet("weapons@pistol@");
+        private readonly ClipSet walkClipset = new ClipSet("move_m@brave");
+        private readonly CrClipAsset shootdodgeClipset = new CrClipAsset("amb@world_human_sunbathe@female@front@base", "base");
+        private readonly CrClipAsset separatedHandAnim = new CrClipAsset("move_fall@weapons@jerrycan", "land_walk_arms");
+
+        private Vector3 aimPosL = new Vector3(0.035f, 0f, 0.015f);
+        private readonly Vector3 aimRotL = new Vector3(90f, 180f, 180f);
+
+        public static Vector3 aimPosR = new Vector3(0.035f, 0f, -0.015f);
+        public static readonly Vector3 aimRotR = new Vector3(90f, 180f, 180f);
+
         public static int Shootdodge;
         public static Type DodgeType;
         public static FieldInfo DodgeField;
+
         public static Weapon MC_Wpn;
         private Weapon lastWpn;
+
         public static bool Conflict = false;
         public static bool Notified = false;
         public static float ikRecoil = 1f;
-
-        private float padButtonTimer = 0f;
-        private float padButtonTimer2 = 0f;
 
         public Main()
         {
             Tick += OnTick;
             KeyDown += OnKeyDown;
+            Utils.Logger.Empty();
             Utils.ConflictGetter();
+            Utils.weaponComponentsHashCache = WeaponComponent.GetAllHashes();
         }
 
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode != Config.toggleKey)
                 return;
-            if (!DualWielding)
-                StartDualWield();
-            else
-                EndOnPressed();
+            if (Utils.AnimsLoaded() && dummyLoaded)
+            {
+                if (!DualWielding)
+                {
+                    StartDualWield();
+                }
+                else
+                    EndOnPressed();
+            }
         }
 
         private void OnTick(object sender, EventArgs e)
         {
-            if (Game.IsCutsceneActive || Game.IsPaused) return;
+            // Load model OnTick! Ped simply not ready fast enough
+            dummyLoaded = Function.Call<bool>(Hash.HAS_MODEL_LOADED, dummy);
+            if (!dummyLoaded)
+            {
+                Function.Call(Hash.REQUEST_MODEL, dummy);
+                Utils.Logger.Log("Loading dummy model, returning...");
+                return;
+            }
+
             Utils.CheckConflict();
             MC = Game.Player.Character;
             MC_Wpn = MC.Weapons.Current;
             CheckController();
-            // new TextElement("Debug" + , new PointF(50f, 38f), 0.5f).ScaledDraw();
 
-            if (MC_Wpn.IsPresent && !DualWielding && !WpnOff.Contains(MC_Wpn.Group))
-                MC.Weapons.CurrentWeaponObject.IsVisible = true;
+            DrawHUD();
+
+            //Destroy FPV Cam
+            if (Config.useFPCam && !DualWielding && FPV.Camera != null)
+            {
+                FPV.Destroy();
+            }
+
+            //Immediate End
+            if (DualWielding && !gunSwapped && (
+                Utils.IsPedEnteringVehicle(MC) || MC.IsDead || Game.IsCutsceneActive || Game.Player.IsDead || !Game.Player.IsPlaying || MC.IsSwimming ||
+                (
+                    (
+                        (!Utils.IsMinigunType(MC_Wpn) && MC_Wpn.Ammo - MC_Wpn.AmmoInClip <= MC_Wpn.MaxAmmoInClip && MC_Wpn.MaxAmmoInClip != 1)
+                        ||
+                        (!Utils.IsMinigunType(MC_Wpn) && MC_Wpn.Ammo - MC_Wpn.AmmoInClip <= (MC_Wpn.MaxAmmoInClip * 2) && MC_Wpn.MaxAmmoInClip == 1)
+                        ||
+                        (Utils.IsMinigunType(MC_Wpn) && MC_Wpn.AmmoInClip <= 1)
+                    ) &&
+                    ((LeftMag < 1 && RightMag < 1) || Game.IsControlJustPressed(GTA.Control.Reload))
+                )
+                ||
+                !AllowedGuns.Contains(MC_Wpn.Group)
+            ))
+                EndDualWield();
 
             if (!DualWielding)
                 return;
 
-            if (!MC.IsInVehicle() && !WpnOff.Contains(MC_Wpn.Group))
+            //FPS Camera - because vanilla fpv butchers the mod
+            if (Config.useFPCam)
+            {
+                if (GameplayCamera.FollowPedCamViewMode == CamViewMode.FirstPerson)
+                {
+                    if (FPV.Camera == null)
+                        FPV.Create();
+                }
+                else FPV.Destroy();
+                FPV.Update();
+            }
+
+            animPitchSource = GameplayCamera.RelativePitch + recoilValue;
+            if (FPV.Active)
+                animPitchSource = FPV.Camera.Rotation.X + recoilValue;
+
+            Utils.surpressed = MC_Wpn.Components.GetSuppressorComponent().Active;
+            Utils.SortPtfx();
+
+            //Prevent ped distraction
+            foreach (Ped ped in World.GetAllPeds())
+            {
+                if (ped.IsInCombatAgainst(ShooterL) || ped.IsInCombatAgainst(ShooterR))
+                {
+                    ped.Task.ClearAll();
+                    ped.Task.Combat(MC);
+                }
+            }
+
+            //OnTick prop attachment + Ped flags (force set every tick and prevent lost gun prop)
+            if (ShooterL != null && ShooterL.Exists())
+                PedKeeper(ShooterL);
+            if (ShooterR != null && ShooterR.Exists())
+                PedKeeper(ShooterR);
+
+            if (!MC.IsInVehicle() && AllowedGuns.Contains(MC_Wpn.Group))
             {
                 GunL = ShooterL.Weapons.CurrentWeaponObject;
                 GunR = ShooterR.Weapons.CurrentWeaponObject;
-                ShooterL.PositionNoOffset = MC.Position + new Vector3(0f, 0f, 1000f);
-                ShooterR.PositionNoOffset = MC.Position + new Vector3(0f, 0f, 1000f);
-                ShooterL.Weapons.Current.InfiniteAmmoClip = true;
-                ShooterR.Weapons.Current.InfiniteAmmoClip = true;
-                AdjustShotguns();
+                ShooterL.PositionNoOffset = MC.Position + new Vector3(0f, 0f, 5f);
+                ShooterR.PositionNoOffset = MC.Position + new Vector3(0f, 0f, 5f);
 
-                //Disable Roll & No Changing Weapon On Reload
+                //Disable Roll & Weapon swapping when reloading
                 if (MC.IsAiming)
                     Game.DisableControlThisFrame(GTA.Control.Jump);
                 if (MC.IsReloading)
@@ -138,288 +201,10 @@ namespace DualWield
                     Game.DisableControlThisFrame(GTA.Control.SelectWeapon); Game.DisableControlThisFrame(GTA.Control.SelectPrevWeapon); Game.DisableControlThisFrame(GTA.Control.SelectNextWeapon);
                     Hud.HideComponentThisFrame(HudComponent.WeaponWheel);
                 }
-                //In-Cover & Jumping Pose
-                if (!MC.IsAiming && MC.IsJumping)
-                {
-                    if (!MC.IsPlayingAnimation(handAnim))
-                        MC.Task.PlayAnimation(handAnim, AnimationBlendDelta.InstantBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)48, 0f);
-                }
-                else if ((MC.IsInCover || MC.IsGoingIntoCover) && !Function.Call<bool>(Hash.IS_PED_SWITCHING_WEAPON, MC) && !MC.IsAiming)
-                {
-                    Utils.SetIK(false);
-                    if (!MC.IsPlayingAnimation(handAnim))
-                        MC.Task.PlayAnimation(handAnim, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.InstantBlendOut, -1, (AnimationFlags)48, 0f);
-                    else if (MC.GetAnimationCurrentTime(handAnim) > 0.2f)
-                        MC.SetAnimationSpeed(handAnim, 0f);
-                }
-                else if (!MC.IsJumping && MC.IsPlayingAnimation(handAnim))
-                    MC.Task.StopScriptedAnimationTask(handAnim, AnimationBlendDelta.SlowBlendOut);
-                //Normal Aiming Pose
-                if (MC.IsAiming && !MC.IsReloading && !MC.IsFalling && Shootdodge == 0 && !AimDown && !AimUp)
-                {
-                    if (!MC.IsPlayingAnimation(turretAnim))
-                        MC.Task.PlayAnimation(turretAnim, AnimationBlendDelta.SlowBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0f);
-                }
-                else if (MC.IsPlayingAnimation(turretAnim))
-                    MC.Task.StopScriptedAnimationTask(turretAnim, AnimationBlendDelta.SlowBlendOut);
-                //Weapon Pitch Trickery
-                if (Shootdodge == 0 && Config.pitchAnims)
-                {
-                    float pitch = GameplayCamera.RelativePitch;
-                    //AimDown_Pose
-                    if (!AimDown && pitch < aimDownDeg && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        if (!MC.IsPlayingAnimation(aimDown))
-                        {
-                            MC.Task.PlayAnimation(aimDown, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0f);
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimDownRotL, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimDownRotR, false, false, false, true, default);
-                        }
-                        AimDown = true;
-                        if (AimDown_Micro7)
-                            AimDown_Micro7 = false;
-                    }
-                    if (AimDown && (pitch >= aimDownDeg || !MC.IsAiming))
-                    {
-                        if (MC.IsPlayingAnimation(aimDown))
-                            MC.Task.StopScriptedAnimationTask(aimDown, AnimationBlendDelta.SlowBlendOut);
-                        if (!AimDown_Micro1 || !AimDown_Micro2 || !AimDown_Micro3 || !AimDown_Micro4 || !AimDown_Micro5 || !AimDown_Micro6 || !AimDown_Micro7)
-                        {
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
-                        }
-                        AimDown = false;
-                    }
-                    //AimUp_Pose
-                    if (!AimUp && pitch > aimUpDeg && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        if (!MC.IsPlayingAnimation(aimUp))
-                        {
-                            MC.Task.PlayAnimation(aimUp, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.SlowBlendOut, -1, (AnimationFlags)50, 0.07f);
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimUpRotL, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimUpRotR, false, false, false, true, default);
-                        }
-                        AimUp = true;
-                        if (AimUp_Micro11)
-                            AimUp_Micro11 = false;
-                    }
-                    if (MC.GetAnimationCurrentTime(aimUp) > 0.08f)
-                        MC.SetAnimationSpeed(aimUp, 0f);
-                    if (AimUp && (pitch <= aimUpDeg || !MC.IsAiming))
-                    {
-                        if (MC.IsPlayingAnimation(aimUp))
-                            MC.Task.StopScriptedAnimationTask(aimUp, AnimationBlendDelta.SlowBlendOut);
-                        if (!AimUp_Micro1 || !AimUp_Micro2 || !AimUp_Micro3 || !AimUp_Micro4 || !AimUp_Micro5 || !AimUp_Micro6 || !AimUp_Micro7 || !AimUp_Micro8 || !AimUp_Micro9 || !AimUp_Micro10 || !AimUp_Micro11)
-                        {
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
-                        }
-                        AimUp = false;
-                    }
 
+                //New Weapon Animation System
+                AnimationSystemV2();
 
-                    //Semi_AimUp
-                    float aimUpDeg_1 = aimUpDeg - 33f;
-                    float aimUpDeg_2 = aimUpDeg - 30f;
-                    float aimUpDeg_3 = aimUpDeg - 27f;
-                    float aimUpDeg_4 = aimUpDeg - 24f;
-                    float aimUpDeg_5 = aimUpDeg - 21f;
-                    float aimUpDeg_6 = aimUpDeg - 18f;
-                    float aimUpDeg_7 = aimUpDeg - 15f;
-                    float aimUpDeg_8 = aimUpDeg - 12f;
-                    float aimUpDeg_9 = aimUpDeg - 9f;
-                    float aimUpDeg_10 = aimUpDeg - 6;
-                    float aimUpDeg_11 = aimUpDeg - 3f;
-
-                    Vector3 posUp_Adj = new Vector3 (0f, 0.020f,0f);
-
-                    if (!AimUp_Micro1 && pitch > aimUpDeg_1 && pitch < aimUpDeg_2 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 4f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 0.25f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 0.25f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro1 = true;
-                        AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro2 && pitch > aimUpDeg_2 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 7.6f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 0.5f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 0.5f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro2 = true;
-                        AimUp_Micro1 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro3 && pitch > aimUpDeg_3 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 11.2f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 0.75f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro3 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro4 && pitch > aimUpDeg_4 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 14.8f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 1.25f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 1.25f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro4 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro5 && pitch > aimUpDeg_5 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 18.4f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 1.45f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 1.45f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro5 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro6 && pitch > aimUpDeg_6 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 22f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 1.65f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 1.65f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro6 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro7 && pitch > aimUpDeg_7 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 25.6f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 1.85f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 1.85f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro7 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro8 && pitch > aimUpDeg_8 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 29.2f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 2f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 2f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro8 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro9 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro9 && pitch > aimUpDeg_9 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 32.8f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 2f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 2f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro9 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro10 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro10 && pitch > aimUpDeg_10 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 36.4f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 2.25f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 2.25f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro8 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro11 = false;
-                    }
-                    if (!AimUp_Micro11 && pitch > aimUpDeg_11 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 40f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + posUp_Adj * 2.5f, aimRotL + pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + posUp_Adj * 2.5f, aimRotR + pitchAdj, false, false, false, true, default);
-                        AimUp_Micro9 = true;
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10 = false;
-                    }
-
-                    //Semi_AimDown
-                    float aimDownDeg_1 = aimDownDeg + 42.5f;
-                    float aimDownDeg_2 = aimDownDeg + 37.5f;
-                    float aimDownDeg_3 = aimDownDeg + 32.5f;
-                    float aimDownDeg_4 = aimDownDeg + 27.5f;
-                    float aimDownDeg_5 = aimDownDeg + 22.5f;
-                    float aimDownDeg_6 = aimDownDeg + 17.5f;
-                    float aimDownDeg_7 = aimDownDeg + 12.5f;
-                    if (!AimDown_Micro1 && pitch < aimDownDeg_1 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 5f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR - pitchAdj, false, false, false, true, default);
-                        AimDown_Micro1 = true;
-                        AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
-                    }
-                    if (!AimDown_Micro2 && pitch < aimDownDeg_2 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 10f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.005f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.005f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
-                        AimDown_Micro2 = true;
-                        AimDown_Micro1 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
-                    }
-                    if (!AimDown_Micro3 && pitch < aimDownDeg_3 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 15f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.005f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.015f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
-                        AimDown_Micro3 = true;
-                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
-                    }
-                    if (!AimDown_Micro4 && pitch < aimDownDeg_4 && MC.IsPlayingAnimation(turretAnim))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 20f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.015f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.025f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
-                        AimDown_Micro4 = true;
-                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
-                    }
-                    if (!AimDown_Micro5 && pitch < aimDownDeg_5 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 25f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.015f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.025f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
-                        AimDown_Micro5 = true;
-                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro6 = AimDown_Micro7 = false;
-                    }
-                    if (!AimDown_Micro6 && pitch < aimDownDeg_6 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 30f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.025f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.035f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
-                        AimDown_Micro6 = true;
-                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro7 = false;
-                    }
-                    if (!AimDown_Micro7 && pitch < aimDownDeg_7 && MC.IsPlayingAnimation(turretAnim) && !Utils.GunNeedAdjustment.Contains(MC_Wpn))
-                    {
-                        Vector3 pitchAdj = new Vector3(0f, 0f, 35f);
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj + new Vector3(0f, -0.025f, 0f), aimRotL - pitchAdj, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj + new Vector3(0f, -0.035f, 0f), aimRotR - pitchAdj, false, false, false, true, default);
-                        AimDown_Micro7 = true;
-                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = false;
-                    }
-
-                    //SemiAimExit
-                    if (!MC.IsAiming || (AimUp_Micro1 && pitch <= aimUpDeg_1) || (AimDown_Micro1 && pitch >= aimDownDeg_1))
-                    {
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
-                        AimUp_Micro1 = AimUp_Micro2 = AimUp_Micro3 = AimUp_Micro4 = AimUp_Micro5 = AimUp_Micro6 = AimUp_Micro7 = AimUp_Micro8 = AimUp_Micro9 = AimUp_Micro10  = AimUp_Micro11 = false;
-                        AimDown_Micro1 = AimDown_Micro2 = AimDown_Micro3 = AimDown_Micro4 = AimDown_Micro5 = AimDown_Micro6 = AimDown_Micro7 = false;
-                    }
-                }
-
-
-
-                //SetIK
-                if (MC.IsAiming && !MC.IsReloading && !MC.IsJumping && GameplayCamera.FollowPedCamViewMode != CamViewMode.FirstPerson)
-                {
-                    Utils.SetIK(true);
-                    float camRotZ = GameplayCamera.Rotation.Z;
-                    if (Shootdodge > 0)
-                    {
-                        if (!GunMoved)
-                        {
-                            GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL_Dodge, false, false, false, true, default);
-                            GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR_Dodge, false, false, false, true, default);
-                        }
-                        GameplayCamera.SetThirdPersonCameraRelativeHeadingLimitsThisUpdate(-23.5f, 23.5f);
-                        GunMoved = true;
-                        GunReset = false;
-                    }
-                    else if (Shootdodge == 0)
-                        MC.Heading = camRotZ;
-                    if (Shootdodge == 0)
-                        Utils.SetIkTarget(MC);
-                }
                 //Weapon change when aiming in FirstPersonView broke the script. Fuck It!
                 if (MC.IsAiming && GameplayCamera.FollowPedCamViewMode == CamViewMode.FirstPerson)
                 {
@@ -427,42 +212,86 @@ namespace DualWield
                     Game.DisableControlThisFrame(GTA.Control.SelectWeapon); Game.DisableControlThisFrame(GTA.Control.SelectPrevWeapon); Game.DisableControlThisFrame(GTA.Control.SelectNextWeapon);
                     Hud.HideComponentThisFrame(HudComponent.WeaponWheel);
                 }
+
                 //ShootdodgeSequence
                 if (Shootdodge != 0)
                 {
-                    if (MC.IsPlayingAnimation(turretAnim))
-                        MC.Task.StopScriptedAnimationTask(turretAnim);
-                    if (!MC.IsPlayingAnimation(dodgeAnim))
-                        MC.Task.PlayAnimation(dodgeAnim, AnimationBlendDelta.NormalBlendIn, AnimationBlendDelta.NormalBlendOut, -1, (AnimationFlags)49, 0f);
+                    if (!MC.IsPlayingAnimation(shootdodgeClipset))
+                        MC.Task.PlayAnimation(shootdodgeClipset, AnimationBlendDelta.NormalBlendIn, AnimationBlendDelta.NormalBlendOut, -1, (AnimationFlags)49, 0f);
                 }
-                else if (MC.IsPlayingAnimation(dodgeAnim))
-                    MC.Task.StopScriptedAnimationTask(dodgeAnim);
-                //Revert Gun Pos If No Shootdodge
+                else if (MC.IsPlayingAnimation(shootdodgeClipset))
+                    MC.Task.StopScriptedAnimationTask(shootdodgeClipset);
+
+
+                //ReloadSequence
                 if (Shootdodge == 0)
                 {
-                    if (GunMoved)
-                        GunMoved = false;
-                    if (!GunMoved && !GunReset)
+                    bool leftNotFull = LeftMag < MC_Wpn.MaxAmmoInClip;
+                    bool rightNotFull = RightMag < MC_Wpn.MaxAmmoInClip;
+
+                    while (MC.IsReloading || MC.IsRagdoll)
+                        Yield();
+
+                    if (!imReloading)
                     {
-                        GunL.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
-                        GunR.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
-                        GunReset = true;
+                        if (Game.IsControlJustPressed(GTA.Control.Reload) && (leftNotFull || rightNotFull))
+                        {
+                            Game.DisableControlThisFrame(GTA.Control.MeleeAttackLight);
+                            Game.DisableControlThisFrame(GTA.Control.MeleeAttackAlternate);
+                            Game.DisableControlThisFrame(GTA.Control.MeleeAttack1);
+                            Game.DisableControlThisFrame(GTA.Control.MeleeAttack2);
+
+                            if (leftNotFull)
+                            {
+                                Reload1();
+                                imReloading = true;
+                                imReloadingPhase = 1;
+                                reloadTimer = 0f;
+                            }
+                            else if (rightNotFull)
+                            {
+                                Reload2();
+                                imReloading = true;
+                                imReloadingPhase = 2;
+                                reloadTimer = 0f;
+                            }
+                        }
                     }
-                }
-                //ReloadSequence
-                if (Shootdodge == 0 && !MC.IsRagdoll)
-                {
-                    if ((Game.IsControlJustPressed(GTA.Control.Reload) || bothMags == 0) && !imReloading && bothMags != oneMag * 2)
-                        Reload1();
-                    if (imReloading && !GunL.IsVisible && !MC.IsReloading)
-                        Reload2();
+                    else
+                    {
+                        reloadTimer += Game.LastFrameTime;
+
+                        if (reloadTimer >= reloadDelay && !MC.IsReloading)
+                        {
+                            if (imReloadingPhase == 1 && (rightNotFull))
+                            {
+                                Reload2();
+                                imReloadingPhase = 2;
+                                reloadTimer = 0f;
+                            }
+                            else
+                            {
+                                imReloading = false;
+                                imReloadingPhase = 0;
+                            }
+                        }
+                    }
                 }
                 else
                 {
                     Game.DisableControlThisFrame(GTA.Control.Reload);
-                    if (bothMags == 0)
+
+                    if (LeftMag == 0)
                     {
-                        MC_Wpn.Ammo -= oneMag;
+                        MC_Wpn.Ammo -= LeftMag;
+                        MC_Wpn.AmmoInClip = 0;
+                        Game.TimeScale = 1f;
+                        Game.Player.DisableFiringThisFrame();
+                    }
+
+                    if (RightMag == 0)
+                    {
+                        MC_Wpn.Ammo -= RightMag;
                         MC_Wpn.AmmoInClip = 0;
                         Game.TimeScale = 1f;
                         Game.Player.DisableFiringThisFrame();
@@ -475,256 +304,532 @@ namespace DualWield
                     if (Game.IsControlJustPressed(GTA.Control.Reload))
                         MC_Wpn.AmmoInClip = MC_Wpn.MaxAmmoInClip;
                 }
-                //ShowWeapon    
-                if (!imReloading && !MC.IsReloading)
+
+                //WeaponVisibility
+                if (!MC.IsVisible || !MC.IsRendered)
                 {
-                    if (!GunL.IsVisible && !GunR.IsVisible)
+                    if (GunL.IsVisible)
+                        GunL.IsVisible = false;
+
+                    if (GunR.IsVisible)
+                        GunR.IsVisible = false;
+                }
+                else
+                {
+                    if (imReloading)
                     {
-                        Utils.ShowPlayerWpn(false);
+                        if (imReloadingPhase == 1)
+                        {
+                            GunL.IsVisible = false;
+                            GunR.IsVisible = false;
+                            Utils.ShowPlayerWpn(true);
+                        }
+                        else if (imReloadingPhase == 2)
+                        {
+                            GunL.IsVisible = true;
+                            GunR.IsVisible = false;
+                            Utils.ShowPlayerWpn(true);
+                        }
+                    }
+                    else
+                    {
                         GunL.IsVisible = true;
                         GunR.IsVisible = true;
-                    }
-                    else if (MC.Weapons.CurrentWeaponObject.IsVisible)
                         Utils.ShowPlayerWpn(false);
+                    }
                 }
-                if (Game.IsEnabledControlJustPressed(GTA.Control.Attack))
-                    Game.Player.DisableFiringThisFrame();
+
+
                 //ShootingSequence
-                if (MC.IsShooting && !MC.IsReloading && bothMags >= 1)
+                bool leftFire = Game.IsControlPressed(GTA.Control.Attack);
+                bool rightFire = Game.IsControlPressed(GTA.Control.Aim);
+                bool semiLeft = Game.IsControlJustPressed(GTA.Control.Attack);
+                bool semiRight = Game.IsControlJustPressed(GTA.Control.Aim);
+
+                if (Game.WasCheatStringJustEntered("RAMBO"))
                 {
-                    MC.Weapons.CurrentWeaponObject.RemoveParticleEffects();
-                    Utils.SortPtfx();
-                    Utils.surpressed = MC_Wpn.Components.GetSuppressorComponent().Active;
-                    if (WpnFilter.Contains(MC_Wpn.Group))
+                    if (unlimitedAmmo == false)
                     {
-                        Utils.PlayerDamage(0.9f);
-                        if (shootCycle == 0)
-                            Utils.ShootAt(ShooterL, GunL);
-                        else
-                            Utils.ShootAt(ShooterR, GunR);
-                        if (shootCycle == 0)
-                        {
-                            shootCycle = 1;
-                            --bothMags;
-                        }
-                        else
-                        {
-                            shootCycle = 0;
-                            --bothMags;
-                        }
+                        Notification.PostTicker("Congrats!! You've activated ~g~Unlimited Ammo ~w~cheat on ~b~Dual Wield Reboot. ~w~~n~Type the cheat again to deactivate on this session", false);
+                        unlimitedAmmo = true;
                     }
-                    else if (WpnFilter2.Contains(MC_Wpn.Group) && gameTimer <= 0)
-                    {
-                        Utils.PlayerDamage(0.7f);
-                        if (shootCycle == 0)
-                            Utils.ShootAt(ShooterL, GunL);
-                        else
-                            Utils.ShootAt(ShooterR, GunR);
-                        if (shootCycle == 0)
-                        {
-                            shootCycle = 1;
-                            --bothMags;
-                        }
-                        else
-                        {
-                            shootCycle = 0;
-                            --bothMags;
-                        }
-                        gameTimer = Game.GameTime + 75;
-                    }
-                    Utils.FakeRecoil(shootCycle);
+                    else unlimitedAmmo = false;
                 }
-                else if (GameplayCamera.IsShaking && Config.recoil > 0.0f) GameplayCamera.StopShaking();
-                oneMag = MC_Wpn.AmmoInClip;
-                if (Game.GameTime >= gameTimer && WpnFilter2.Contains(MC_Wpn.Group))
-                    gameTimer = 0;
+
+                if (Game.LastInputMethod == InputMethod.GamePad)
+                {
+                    leftFire = Game.IsControlPressed(GTA.Control.Aim);
+                    rightFire = Game.IsControlPressed(GTA.Control.Attack);
+                    semiLeft = Game.IsControlJustPressed(GTA.Control.Aim);
+                    semiRight = Game.IsControlJustPressed(GTA.Control.Attack);
+                }
+
+                Game.DisableControlThisFrame(GTA.Control.Aim);
+                Game.DisableControlThisFrame(GTA.Control.Attack);
+                Game.DisableControlThisFrame(GTA.Control.Attack2);
+
+                //Force remove ptfx
+                MC.Weapons.CurrentWeaponObject.RemoveParticleEffects();
+
+                if (Utils.WeaponDamageType(MC_Wpn) != 5 && MC_Wpn.Group != WeaponGroup.Sniper && MC_Wpn != WeaponHash.Widowmaker)
+                {
+                    if ((semiLeft || semiRight) && !aiming)
+                    {
+                        Game.Player.ForcedAim = true;
+                        aiming = true;
+                        aimStartTime = Game.GameTime;
+                        aimReleaseTime = null;
+                    }
+
+                    //SHOOTING
+                    if (aiming && aimStartTime.HasValue && Game.GameTime - aimStartTime.Value >= shootReadyDelay)
+                    {
+                        if (MC.IsReloading && imReloading)
+                            return;
+
+                        if (MC.IsAiming)
+                        {
+                            MC.SetNotDamagedByRelGroup(MC.RelationshipGroup);
+                            MC.SetNotDamagedByRelGroup(ShooterL.RelationshipGroup);
+                            MC.SetNotDamagedByRelGroup(ShooterR.RelationshipGroup);
+
+                            if ((leftFire && LeftMag > 0) || (rightFire && RightMag > 0))
+                            {
+                                Vector3 coord = MC.Position - MC.ForwardVector * 9999f;
+                                Function.Call(Hash.SET_PED_SHOOTS_AT_COORD, MC, coord.X, coord.Y, coord.Z, true);
+                            }
+
+                            if (MC.IsShooting)
+                            {
+                                if (leftFire && LeftMag > 0)
+                                {
+                                    Utils.ShootAt(ShooterL, GunL);
+                                    if (unlimitedAmmo == false)
+                                        LeftMag--;
+                                    PlayRecoilAnim();
+                                }
+
+                                if (rightFire && RightMag > 0)
+                                {
+                                    Utils.ShootAt(ShooterR, GunR);
+                                    if (unlimitedAmmo == false)
+                                        RightMag--;
+                                    PlayRecoilAnim();
+                                }
+                            }
+                        }
+                        else MC.ClearNotDamagedByRelGroup();
+                    }
+
+                    //RELEASE & EXIT AIM AFTER DELAY
+                    bool bothReleased = !leftFire && !rightFire;
+
+                    if (aiming)
+                    {
+                        if (bothReleased)
+                        {
+                            if (!aimReleaseTime.HasValue)
+                                aimReleaseTime = Game.GameTime;
+
+                            if (Game.GameTime - aimReleaseTime.Value >= aimExitDelay)
+                            {
+                                Game.Player.ForcedAim = false;
+                                aiming = false;
+                                aimStartTime = null;
+                                aimReleaseTime = null;
+
+                                if (Utils.WeaponDamageType(MC_Wpn) == 5)
+                                    MC.ClearOnlyDamagedByRelGroup();
+                            }
+                        }
+                        else
+                        {
+                            aimReleaseTime = null;
+                        }
+                    }
+                }
+                // Separated Explosive Weapon - prevent early explosion, ammo bug etc
+                else if (Utils.WeaponDamageType(MC_Wpn) == 5)
+                {
+                    ShooterL.Weapons.Current.InfiniteAmmoClip = false;
+                    ShooterR.Weapons.Current.InfiniteAmmoClip = false;
+
+                    if (semiLeft && !semiRight && LeftMag != 0)
+                    {
+                        noScoping = true;
+                        if (Utils.GunReadyToShoot(ShooterL) && MC.IsPlayingAnimation(Utils.AimAnim))
+                        {
+                            Game.Player.DisableFiringThisFrame();
+                            Utils.ShootAt(ShooterL, GunL);
+                            if (unlimitedAmmo == false)
+                                LeftMag--;
+                            PlayRecoilAnim();
+                            ShooterL.Weapons.Current.AmmoInClip -= 1;
+                        }
+                        snipingEndTime = Game.GameTime + 1200;
+                    }
+                    if (semiRight && !semiLeft && RightMag != 0)
+                    {
+                        noScoping = true;
+                        if (Utils.GunReadyToShoot(ShooterR) && MC.IsPlayingAnimation(Utils.AimAnim))
+                        {
+                            Game.Player.DisableFiringThisFrame();
+                            Utils.ShootAt(ShooterR, GunR);
+                            if (unlimitedAmmo == false)
+                                RightMag--;
+                            PlayRecoilAnim();
+                            ShooterR.Weapons.Current.AmmoInClip -= 1;
+                        }
+                        snipingEndTime = Game.GameTime + 1200;
+                    }
+                    if ((semiLeft && LeftMag != 0) && (semiRight && RightMag != 0))
+                    {
+                        noScoping = true;
+                        if (Utils.GunReadyToShoot(ShooterL) && Utils.GunReadyToShoot(ShooterR) && MC.IsPlayingAnimation(Utils.AimAnim))
+                        {
+                            Game.Player.DisableFiringThisFrame();
+                            Utils.ShootAt(ShooterL, GunL);
+                            if (unlimitedAmmo == false)
+                                LeftMag--;
+                            ShooterL.Weapons.Current.AmmoInClip -= 1;
+                            Utils.ShootAt(ShooterR, GunR);
+                            if (unlimitedAmmo == false)
+                                RightMag--;
+                            ShooterR.Weapons.Current.AmmoInClip -= 1;
+                            PlayRecoilAnim();
+                        }
+                        snipingEndTime = Game.GameTime + 1200;
+                    }
+                }
+                // Separated sniping to prevent scope overlay
+                else if (MC_Wpn.Group == WeaponGroup.Sniper)
+                {
+                    if (semiLeft && !semiRight && LeftMag != 0)
+                    {
+                        noScoping = true;
+                        if (Utils.GunReadyToShoot(ShooterL) && MC.IsPlayingAnimation(Utils.AimAnim))
+                        {
+                            Game.Player.DisableFiringThisFrame();
+                            Utils.ShootAt(ShooterL, GunL);
+                            if (unlimitedAmmo == false)
+                                LeftMag--;
+                            PlayRecoilAnim();
+                        }
+                        snipingEndTime = Game.GameTime + 1200;
+
+                    }
+                    if (semiRight && !semiLeft && RightMag != 0)
+                    {
+                        noScoping = true;
+                        if (Utils.GunReadyToShoot(ShooterR) && MC.IsPlayingAnimation(Utils.AimAnim))
+                        {
+                            Game.Player.DisableFiringThisFrame();
+                            Utils.ShootAt(ShooterR, GunR);
+                            if (unlimitedAmmo == false)
+                                RightMag--;
+                            PlayRecoilAnim();
+                        }
+                        snipingEndTime = Game.GameTime + 1200;
+                    }
+                    if ((semiLeft && LeftMag != 0) && (semiRight && RightMag != 0))
+                    {
+                        noScoping = true;
+                        if (Utils.GunReadyToShoot(ShooterL) && Utils.GunReadyToShoot(ShooterR) && MC.IsPlayingAnimation(Utils.AimAnim))
+                        {
+                            Game.Player.DisableFiringThisFrame();
+                            Utils.ShootAt(ShooterL, GunL);
+                            if (unlimitedAmmo == false)
+                                LeftMag--;
+                            Utils.ShootAt(ShooterR, GunR);
+                            if (unlimitedAmmo == false)
+                                RightMag--;
+                            PlayRecoilAnim();
+                        }
+                        snipingEndTime = Game.GameTime + 1200;
+                    }
+                }
+
+                // Fuck Widowmaker, GTFO!
+                else if (MC_Wpn == WeaponHash.Widowmaker)
+                {
+                    if ((leftFire && LeftMag != 0) && (rightFire && RightMag != 0))
+                    {
+                        noScoping = true;
+                        if (Utils.GunReadyToShoot(ShooterL) && Utils.GunReadyToShoot(ShooterR))
+                        {
+                            Game.Player.DisableFiringThisFrame();
+                            Utils.ShootAt(ShooterL, GunL);
+                            if (unlimitedAmmo == false)
+                                LeftMag--;
+                            Utils.ShootAt(ShooterR, GunR);
+                            if (unlimitedAmmo == false)
+                                RightMag--;
+                            PlayRecoilAnim();
+                        }
+                        snipingEndTime = Game.GameTime + 450;
+                    }
+                }
+
+                if (snipingEndTime != 0 && Game.GameTime >= snipingEndTime)
+                {
+                    noScoping = false;
+                    snipingEndTime = 0;
+                }
+                if (noScoping && GameplayCamera.FollowPedCamViewMode != CamViewMode.FirstPerson && !FPV.Active)
+                {
+                    MC.Rotation = new Vector3(MC.Rotation.X, MC.Rotation.Y, GameplayCamera.Rotation.Z);
+                }
+
+                //Prevent projectile damaging player - early collision
+                List<Projectile> projectiles = World.GetNearbyProjectiles(MC.Position, 5f).Cast<Projectile>().ToList();
+                foreach (var proj in projectiles)
+                {
+                    if (proj.OwnerEntity == MC || proj.OwnerEntity == ShooterL || proj.OwnerEntity == ShooterR)
+                    {
+                        if (Vector3.Distance(proj.Position, MC.Position) <= 3f)
+                        {
+                            proj.SetNoCollision(MC, true);
+                            if (Utils.WeaponDamageType(MC_Wpn) != 5)
+                            {
+                                proj.SetNoCollision(GunR, true);
+                                proj.SetNoCollision(GunL, true);
+                            }
+                        }
+                        else if (Vector3.Distance(proj.Position, MC.Position) > 5f)
+                        {
+                            proj.SetNoCollision(MC, false);
+                            if (Utils.WeaponDamageType(MC_Wpn) != 5)
+                            {
+                                proj.SetNoCollision(GunR, false);
+                                proj.SetNoCollision(GunL, false);
+                            }
+                        }
+                    }
+                }
             }
 
-            foreach (Ped allPed in World.GetAllPeds())
-            {
-                if (allPed.IsInCombatAgainst(ShooterL) || allPed.IsInCombatAgainst(ShooterR))
-                {
-                    allPed.Task.ClearAll();
-                    allPed.Task.Combat(MC);
-                }
-            }
             //WeaponSwitching
             if (Game.IsControlJustPressed(GTA.Control.SelectWeapon))
                 lastWpn = MC_Wpn;
-            if (Function.Call<bool>(Hash.IS_PED_SWITCHING_WEAPON, MC))
+            if (Utils.IsSwitchingGun(MC))
             {
-                GunSwap = true;
+                gunSwapped = true;
                 EndDualWield();
             }
-            if (GunSwap && !DualWielding && !WpnOff.Contains(MC_Wpn.Group))
+            if (gunSwapped && AllowedGuns.Contains(MC_Wpn.Group))
             {
-                GunSwap = false;
+                gunSwapped = false;
+                Wait(500);
                 StartDualWield();
             }
-
-            if (MC.IsAiming || imReloading)
-                DisplayHud();
-
-            if ((MC.IsGettingIntoVehicle || !MC.IsAlive || MC.IsInWater || (MC_Wpn.Ammo - MC_Wpn.AmmoInClip <= MC_Wpn.MaxAmmoInClip && MC.IsReloading) || WpnOff.Contains(MC_Wpn.Group)) && !GunSwap)
-                EndDualWield();
         }
 
         private void StartDualWield()
         {
+            isMinigun = Utils.IsMinigunType(MC_Wpn);
+
             if (DualWielding)
                 return;
-            else if (!WpnOff.Contains(MC_Wpn.Group) && MC_Wpn.Ammo - MC_Wpn.AmmoInClip >= MC_Wpn.MaxAmmoInClip && !MC.IsInVehicle() &&
-                    !MC.IsRagdoll && MC.IsAlive && !MC.IsFalling && !MC.IsSwimming && Shootdodge == 0)
+
+            else if (AllowedGuns.Contains(MC_Wpn.Group) && !MC.IsInVehicle() &&
+                ((!Utils.IsMinigunType(MC_Wpn) && MC_Wpn.Ammo - MC_Wpn.AmmoInClip >= MC_Wpn.MaxAmmoInClip && MC_Wpn.MaxAmmoInClip != 1)
+                || (!Utils.IsMinigunType(MC_Wpn) && MC_Wpn.Ammo - MC_Wpn.AmmoInClip >= (MC_Wpn.MaxAmmoInClip * 2) && MC_Wpn.MaxAmmoInClip == 1)
+                || (Utils.IsMinigunType(MC_Wpn) && MC_Wpn.AmmoInClip > 1))
+                && MC_Wpn.AmmoInClip != 0 && !MC.IsRagdoll && MC.IsAlive && !MC.IsReloading && !MC.IsFalling && !MC.IsSwimming && Shootdodge == 0 && MC_Wpn != null && MC_Wpn.IsPresent)
             {
+                if (isMinigun)
+                {
+                    // Minigun have MaxAmmo = MaxAmmoInClip behavior
+                    int total = MC_Wpn.Ammo;
+                    LeftMag = total / 2;
+                    RightMag = total - LeftMag;
+                    MC_Wpn.Ammo = MC_Wpn.MaxAmmo;
+                    MC_Wpn.AmmoInClip = MC_Wpn.MaxAmmoInClip;
+                }
+                else
+                {
+                    LeftMag = MC_Wpn.AmmoInClip;
+                    RightMag = MC_Wpn.AmmoInClip;
+                    MC_Wpn.Ammo -= LeftMag + RightMag;
+                }
+
                 if (Conflict)
                     Notified = false;
-                Utils.LoadClipSet(wpnAnim);
-                wpnAnim.Request();
-                accuracy = MC.Accuracy;
-                oneMag = MC_Wpn.AmmoInClip;
-                MC_Wpn.Ammo -= oneMag;
+
                 imReloading = false;
-                MC.Task.PlayAnimation("melee@holster", "unholster", 8f, -1, (AnimationFlags)48);
+
+                ShooterL = CreateFakeShooter();
+                ShooterR = CreateFakeShooter();
+
+                if (ShooterL == null || ShooterR == null)
+                    return;
+                Utils.SortAnim(MC.Weapons.Current);
                 Utils.ShowPlayerWpn(false);
-                if (MC.GetAnimationCurrentTime(new CrClipAsset("melee@holster", "unholster")) < 1.0f)
-                    Yield();
-                ShooterL = CreateFakeShooter(1);
-                ShooterR = CreateFakeShooter(2);
                 MC_Wpn.InfiniteAmmoClip = true;
-                bothMags = oneMag * 2;
-                MC.Accuracy = 0;
-                MC.SetWeaponMovementClipSet(wpnAnim);
+                ShooterL.Weapons.Current.InfiniteAmmoClip = true;
+                ShooterL.Weapons.Current.InfiniteAmmo = true;
+                ShooterR.Weapons.Current.InfiniteAmmoClip = true;
+                ShooterR.Weapons.Current.InfiniteAmmo = true;
+                Utils.AlterWeaponClipSet(true, moveClipset);
+
                 lastWpn = MC_Wpn;
-                AimDown = false;
-                AimUp = false;
                 DualWielding = true;
+                wasDualWielding = false;
+                dualWieldEndTime = null;
             }
         }
 
-        private Ped CreateFakeShooter(int LR)
+        private Ped CreateFakeShooter()
         {
-            AdjustShotguns();
-            Ped ped = World.CreatePed((Model)PedHash.Famdnf01GMY, MC.Position);
+            Ped ped = (Ped)Ped.FromHandle(Function.Call<int>(Hash.CREATE_PED, 26, dummy, MC.Position.X, MC.Position.Y, MC.Position.Z + 5f, MC.Heading, false, false));
             ped.IsVisible = false;
-            ped.Weapons.Give(MC_Wpn.Hash, 999, true, true);
+            ped.Weapons.Give(MC_Wpn.Hash, MC_Wpn.MaxAmmo, true, true);
             Utils.GetAttachments(ped);
-            ped.Weapons.CurrentWeaponObject.IsVisible = false;
             ped.Weapons.Select(MC_Wpn.Hash, true);
-            Function.Call(Hash.SET_ENTITY_PROOFS, ped, true, true, true, true, true, true, true, true);
-            Function.Call(Hash.STOP_PED_SPEAKING, ped, true);
-            ped.CanRagdoll = false;
-            ped.IsCollisionEnabled = false;
-            ped.IsPositionFrozen = true;
-            ped.BlockPermanentEvents = true;
-            ped.RelationshipGroup = MC.RelationshipGroup;
-            ped.Accuracy = 0;
-            ped.Weapons.CurrentWeaponObject.Detach();
-            if (LR == 1)
-            {
-                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelLeftHand], aimPosL + aimPosL_gunAdj, aimRotL, false, false, false, true, default);
-            }
+            if (Utils.DoesExists(ped))
+                return ped;
             else
             {
-                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelRightHand], aimPosR + aimPosR_gunAdj, aimRotR, false, false, false, true, default);
+                Utils.Logger.Log($"Dummy ped creation returns null");
+                return null;
             }
-            ped.Weapons.CurrentWeaponObject.IsVisible = true;
-            return ped;
         }
 
-        private void Reload1()
+        private void Reload1() // Reload Left Weapon
         {
-            Utils.SetIK(false);
+            int lastMag = MC_Wpn.AmmoInClip; // needed to replace Task.ReloadWeapon technique;
             MC.BlocksAnyDamageButHasReactions = true;
-            MC.Task.StopScriptedAnimationTask(handAnim, AnimationBlendDelta.InstantBlendOut);
-            MC.ResetWeaponMovementClipSet();
-            MC.Task.ReloadWeapon();
-            GunL.IsVisible = false;
-            GunR.IsVisible = false;
-            Utils.ShowPlayerWpn(true);
-            while (MC.IsReloading)
-                Yield();
-            MC.Task.PlayAnimation("weapon@w_sp_jerrycan", "holster", 8f, -1, (AnimationFlags)48);
-            oneMag = MC_Wpn.AmmoInClip;
-            if (MC.GetAnimationCurrentTime(new CrClipAsset("weapon@w_sp_jerrycan", "holster")) < 1.0f)
-                Yield();
-            if (bothMags != (oneMag * 2) - 1)
-                imReloading = true;
+            MC.Task.StopScriptedAnimationTask(separatedHandAnim, AnimationBlendDelta.InstantBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.WalkingAnim, AnimationBlendDelta.NormalBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.RunningAnim, AnimationBlendDelta.NormalBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, AnimationBlendDelta.NormalBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.AimAnim, AnimationBlendDelta.NormalBlendOut);
+            MC_Wpn.AmmoInClip = 0; // needed to replace Task.ReloadWeapon
+            Yield();
+
+            if (!MC.IsPlayingAnimation(new CrClipAsset("melee@holster", "holster")))
+            {
+                MC.Task.PlayAnimation(new CrClipAsset("melee@holster", "holster"), AnimationBlendDelta.NormalBlendIn, AnimationBlendDelta.VerySlowBlendOut, 800, (AnimationFlags)48, 0f);
+                Wait(800);
+            }
+
+            MC_Wpn.Ammo += lastMag;
+            Function.Call(Hash.MAKE_PED_RELOAD, MC);
+            Hud.HideComponentThisFrame(HudComponent.WeaponIcon);
+            //MC.Task.ReloadWeapon();
+
+            int needed = MC_Wpn.MaxAmmoInClip - LeftMag;
+            if (MC_Wpn.Ammo >= needed)
+            {
+                LeftMag += needed;
+                MC_Wpn.Ammo -= needed;
+            }
             else
             {
-                bothMags = oneMag * 2;
-                MC_Wpn.Ammo -= 1;
-                MC.SetWeaponMovementClipSet(wpnAnim);
+                LeftMag += MC_Wpn.Ammo;
+                MC_Wpn.Ammo = 0;
             }
+
+            if (Utils.WeaponDamageType(MC_Wpn) == 5 && MC_Wpn.Group == WeaponGroup.Heavy && ShooterL.Weapons.Current.AmmoInClip == 0)
+            {
+                ShooterL.Task.ReloadWeapon();
+            } //Required for rocket removal from weapon object upon shooting
+
             MC.BlocksAnyDamageButHasReactions = false;
         }
 
-        private void Reload2()
+        private void Reload2() // Reload Right Weapon
         {
-            if (MC_Wpn.AmmoInClip >= MC_Wpn.MaxAmmoInClip)
-                imReloading = false;
-            Utils.SetIK(false);
+            // Simply a copy with change in ammo
+            int lastMag = MC_Wpn.AmmoInClip;
             MC.BlocksAnyDamageButHasReactions = true;
-            MC.Task.StopScriptedAnimationTask(handAnim, AnimationBlendDelta.InstantBlendOut);
-            GunL.IsVisible = false;
-            GunR.IsVisible = false;
-            Utils.ShowPlayerWpn(true);
-            MC.Task.PlayAnimation("melee@holster", "holster", 8f, -1, (AnimationFlags)48);
-            if (MC.GetAnimationCurrentTime(new CrClipAsset("melee@holster", "holster")) < 1.0f)
-                Yield();
-            MC.Task.ReloadWeapon();
-            while (MC.IsReloading)
-                Yield();
-            MC.Task.PlayAnimation("weapon@w_sp_jerrycan", "unholster", 8f, -1, (AnimationFlags)48);
-            if (MC.GetAnimationCurrentTime(new CrClipAsset("weapon@w_sp_jerrycan", "unholster")) < 1.0f)
-                Yield();
-            MC.Task.PlayAnimation("weapon@w_sp_jerrycan", "holster_2_aim", 8f, -1, (AnimationFlags)48);
-            if (MC.GetAnimationCurrentTime(new CrClipAsset("weapon@w_sp_jerrycan", "holster_2_aim")) < 1.0f)
-                Yield();
-            if (bothMags != 0)
+            MC.Task.StopScriptedAnimationTask(separatedHandAnim, AnimationBlendDelta.InstantBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.WalkingAnim, AnimationBlendDelta.NormalBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.RunningAnim, AnimationBlendDelta.NormalBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, AnimationBlendDelta.NormalBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.AimAnim, AnimationBlendDelta.NormalBlendOut);
+            MC_Wpn.AmmoInClip = 0;
+            Yield();
+            MC_Wpn.Ammo += lastMag;
+            Function.Call(Hash.MAKE_PED_RELOAD, MC);
+            Hud.HideComponentThisFrame(HudComponent.WeaponIcon);
+            //MC.Task.ReloadWeapon();
+
+            int needed = MC_Wpn.MaxAmmoInClip - RightMag;
+            if (MC_Wpn.Ammo >= needed)
             {
-                int ammoUsed = (oneMag * 2) - bothMags;
-                MC_Wpn.Ammo -= ammoUsed;
-                bothMags = oneMag * 2;
+                RightMag += needed;
+                MC_Wpn.Ammo -= needed;
             }
             else
             {
-                bothMags = oneMag * 2;
-                MC_Wpn.Ammo -= bothMags;
+                RightMag += MC_Wpn.Ammo;
+                MC_Wpn.Ammo = 0;
             }
-            imReloading = false;
+
+            if (Utils.WeaponDamageType(MC_Wpn) == 5 && MC_Wpn.Group == WeaponGroup.Heavy && ShooterR.Weapons.Current.AmmoInClip == 0)
+            {
+                ShooterR.Task.ReloadWeapon();
+            }
+
             MC.BlocksAnyDamageButHasReactions = false;
-            MC.SetWeaponMovementClipSet(wpnAnim);
         }
 
         private void EndDualWield()
         {
+            Game.Player.ForcedAim = false;
             Utils.SetIK(false);
-            MC.ResetWeaponMovementClipSet();
-            MC.Task.StopScriptedAnimationTask(turretAnim, AnimationBlendDelta.VerySlowBlendOut);
-            ShooterL.MarkAsNoLongerNeeded();
-            ShooterR.MarkAsNoLongerNeeded();
+            Utils.AlterWeaponClipSet(false, moveClipset);
+            MC.Task.StopScriptedAnimationTask(Utils.AimAnim, AnimationBlendDelta.SlowBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, AnimationBlendDelta.VerySlowBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.WalkingAnim, AnimationBlendDelta.WalkBlendOut);
+            MC.Task.StopScriptedAnimationTask(Utils.RunningAnim, AnimationBlendDelta.WalkBlendOut);
             ShooterL.Delete();
             ShooterR.Delete();
-            MC.Accuracy = accuracy;
-            if (!GunSwap) // Stop Ammo Loss when Weapon Changed
+            Utils.ShowPlayerWpn(true);
+            MC_Wpn.InfiniteAmmoClip = false;
+
+            if (!gunSwapped)
             {
-                MC_Wpn.InfiniteAmmoClip = false;
-                MC_Wpn.Ammo += bothMags / 2;
-                MC_Wpn.AmmoInClip = bothMags / 2;
+                if (isMinigun)
+                {
+                    MC_Wpn.Ammo = LeftMag + RightMag;
+                }
+                else if (MC_Wpn.Group == WeaponGroup.Melee || MC_Wpn.Group == WeaponGroup.Unarmed)
+                {
+                    lastWpn.Ammo += LeftMag + RightMag;
+                }
+                else
+                {
+                    if (LeftMag > 0 || RightMag > 0)
+                        MC_Wpn.AmmoInClip = 0;
+
+                    MC_Wpn.Ammo += LeftMag + (RightMag * 2);
+                }
+
             }
             else
             {
-                lastWpn.InfiniteAmmoClip = false;
-                lastWpn.Ammo += bothMags / 2;
-                lastWpn.AmmoInClip = bothMags / 2;
+                if (isMinigun)
+                {
+                    lastWpn.Ammo = LeftMag + RightMag;
+                }
+                else
+                {
+                    lastWpn.Ammo += LeftMag + RightMag;
+                    //Notification.PostTicker("Gun Swap Called", true);
+                }
             }
-            Utils.PlayerDamage(1f);
-            Utils.ShowPlayerWpn(true);
-            shootCycle = 0;
-            imReloading = false;
-            AimDown = false;
-            AimUp = false;
+
+            if (MC.IsAiming && Utils.WeaponDamageType(MC_Wpn) != 5)
+                MC.ClearNotDamagedByRelGroup();
+
+            Utils.ReleaseAnims();
             DualWielding = false;
+            wasDualWielding = true;
+            noScoping = false;
+            Utils.ShowPlayerWpn(true);
+            dualWieldEndTime = Game.GameTime;
         }
 
         private void EndOnPressed()
@@ -738,25 +843,60 @@ namespace DualWield
             }
         }
 
-        private void DisplayHud()
+        private void DrawHUD()
         {
-            new TextElement("" + bothMags, new PointF(1255f, 60f), 0.52f, Color.Red, GTA.UI.Font.Pricedown, Alignment.Center, false, true).ScaledDraw();
-            new TextElement("Dual", new PointF(1210f, 61f), 0.25f, Color.Red, GTA.UI.Font.RockstarTag, Alignment.Left, false, true).ScaledDraw();
-            new TextElement("Wield", new PointF(1210f, 69f), 0.25f, Color.Red, GTA.UI.Font.RockstarTag, Alignment.Left, false, true).ScaledDraw();
-        }
+            if ((!wasDualWielding && !DualWielding) || !AllowedGuns.Contains(MC_Wpn.Group) || !Config.useHUD)
+                return;
 
-        private void AdjustShotguns()
-        {
-            if (Utils.GunNeedAdjustment.Contains(MC_Wpn))
+            float scaleHud = 1f;
+
+            bool blinkDraw = (Game.GameTime / 700) % 2 == 0;
+
+            if (MC_Wpn.Ammo - MC_Wpn.AmmoInClip <= MC_Wpn.MaxAmmoInClip)
             {
-                aimPosL_gunAdj = new Vector3(-0.015f, 0.030f, -0.015f);
-                aimPosR_gunAdj = new Vector3(-0.035f, 0.025f, 0f);
+                if (wasDualWielding && dualWieldEndTime.HasValue)
+                {
+                    if (blinkDraw)
+                        Utils.DrawIcon("mplastgunslingershud", "type_prompt_no_ammo", Color.White, 76f * scaleHud, 24.5f * scaleHud, 1183f, 100f, 0f);
+
+                    if (Game.GameTime - dualWieldEndTime.Value >= 3000)
+                    {
+                        wasDualWielding = false;
+                        dualWieldEndTime = null;
+                    }
+                }
             }
-            else
+
+            if (!DualWielding)
+                return;
+
+            Hud.HideComponentThisFrame(HudComponent.WeaponIcon);
+
+            var iconData = Utils.WeaponGroupIcon(MC_Wpn.Group);
+
+            if ((LeftMag != 0 || RightMag != 0) && !MC.IsReloading && Config.useCrosshair)
+                Hud.ShowComponentThisFrame(HudComponent.Reticle);
+
+            //new TextElement("~y~ Test ~w~v2.0 Dual Wield", new PointF(50f, 38f), 0.5f).ScaledDraw();
+            //new TextElement("Aim Anim: " + Utils.AimAnim.ClipName, new PointF(50f, 58f), 0.25f).ScaledDraw();
+
+            if (!MC.IsReloading && !imReloading)
             {
-                aimPosL_gunAdj = Vector3.Zero;
-                aimPosR_gunAdj = Vector3.Zero;
+                if (iconData != null || (LeftMag != 0 && RightMag != 0))
+                {
+                    string dict = iconData.Value.textureDict;
+                    string name = iconData.Value.textureName;
+
+                    Utils.DrawIcon(dict, name, Utils.GetAmmoColor(LeftMag, MC_Wpn.MaxAmmoInClip), 32f * scaleHud, 64f * scaleHud, 1185f, 80f, -90f);
+                    Utils.DrawIcon(dict, name, Utils.GetAmmoColor(RightMag, MC_Wpn.MaxAmmoInClip), 32f * scaleHud, 64f * scaleHud, 1225f, 80f, -270f);
+                }
+                new TextElement($"{LeftMag}", new PointF(1195f, 146f), 0.35f * scaleHud, Color.WhiteSmoke, GTA.UI.Font.Pricedown, Alignment.Center, false, true).Draw();
+                new TextElement($"{RightMag}", new PointF(1245f, 146f), 0.35f * scaleHud, Color.WhiteSmoke, GTA.UI.Font.Pricedown, Alignment.Center, false, true).Draw();
             }
+
+            if (LeftMag == 0 && RightMag == 0 && blinkDraw)
+                Utils.DrawIcon("mplastgunslingershud", "type_prompt_reload", Color.White, 76f * scaleHud, 24.5f * scaleHud, 1183f, 100f, 0f);
+
         }
 
         private void CheckController()
@@ -791,6 +931,227 @@ namespace DualWield
                     padButtonTimer = 0f;
                 }
             }
+        }
+
+        private void AnimationSystemV2() //fuck clean code, this is easier for me
+        {
+            bool rockets = MC_Wpn == WeaponHash.RPG || MC_Wpn == WeaponHash.HomingLauncher || MC_Wpn == WeaponHash.Firework;
+            bool noWalkAnim = Config.noWalkAnim && !isMinigun && !rockets;
+            bool noRunAnim = Config.noRunAnim && !isMinigun && !rockets;
+            bool noIdleAnim = Config.noIdleAnim && !isMinigun && !rockets;
+
+            //In-Cover & Jumping Pose
+            if (!MC.IsAiming && (MC.IsJumping || Utils.IsLanding(MC)))
+            {
+                if (Utils.AimAnim == Utils.RPG)
+                    return;
+                if (!MC.IsPlayingAnimation(separatedHandAnim))
+                    MC.Task.PlayAnimation(separatedHandAnim, AnimationBlendDelta.FastBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48, 0f);
+            }
+            else if ((MC.IsInCover || MC.IsGoingIntoCover) && !Utils.IsSwitchingGun(MC) && !MC.IsAiming)
+            {
+                Utils.SetIK(false);
+                Utils.Request(separatedHandAnim.ClipDictionary, 800);
+                if (!MC.IsPlayingAnimation(separatedHandAnim))
+                    MC.Task.PlayAnimation(separatedHandAnim, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48, 0f);
+                else if (MC.GetAnimationCurrentTime(separatedHandAnim) > 0.2f)
+                    MC.SetAnimationSpeed(separatedHandAnim, 0f);
+                //GTA.UI.Screen.ShowSubtitle("In-Cover Called" + MC.IsPlayingAnimation(separatedHandAnim), 500);
+            }
+            else MC.Task.StopScriptedAnimationTask(separatedHandAnim, AnimationBlendDelta.WalkBlendOut);
+
+            //AIM
+            if ((MC.IsAiming || noScoping) && !MC.IsReloading && !imReloading && !MC.IsFalling && !MC.IsInAir && !MC.IsGettingUp && !MC.IsVaulting && !MC.IsDucking && !MC.IsPerformingMeleeAction && Shootdodge == 0)
+            {
+                if (!MC.IsPlayingAnimation(Utils.AimAnim))
+                    MC.Task.PlayAnimation(Utils.AimAnim, new AnimationBlendDelta(10f), new AnimationBlendDelta(-1f), -1, AnimationFlags.UpperBodyOnly | (AnimationFlags)49 | AnimationFlags.Loop, 0f);
+
+                Utils.SetIK(false);
+            }
+            else if (MC.IsPlayingAnimation(Utils.AimAnim))
+            {
+                MC.Task.StopScriptedAnimationTask(Utils.AimAnim, AnimationBlendDelta.SlowBlendOut);
+            }
+            UpdateAiming(); //Update Anim to Cam pitch
+
+            //WALK
+            if (!noWalkAnim)
+            {
+                if (!Game.IsControlPressed(GTA.Control.Sprint) && !MC.IsAiming && !noScoping && !MC.IsJumping && MC.IsWalking && !MC.IsRunning && !MC.IsSprinting && !MC.IsReloading && !imReloading && !MC.IsFalling && Utils.WalkingAnim != Utils.Normal_Walk
+                    && !MC.IsInAir && !MC.IsGettingUp && !MC.IsVaulting && !MC.IsDucking && !MC.IsInStealthMode && !MC.IsPerformingMeleeAction && !MC.IsInCover && !MC.IsGoingIntoCover && !Utils.IsLanding(MC) && Shootdodge == 0)
+                //Because the sassy walk bug on Normal_Walk, we fallback to default
+                {
+                    if (!MC.IsPlayingAnimation(Utils.WalkingAnim))
+                    {
+                        if (!Config.useSecondary)
+                            MC.Task.PlayAnimation(Utils.WalkingAnim, AnimationBlendDelta.WalkBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48 | AnimationFlags.Loop, 0f);
+                        else
+                            MC.Task.PlayAnimation(Utils.WalkingAnim, new AnimationBlendDelta(1f), new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | AnimationFlags.Loop, 0f);
+                    }
+                    if (MC.IsPlayingAnimation(Utils.WalkingAnim) && !Config.useSecondary)
+                    {
+                        if (Utils.WalkingAnim == Utils.GangWalk || Utils.WalkingAnim == Utils.MG_Walk || Utils.WalkingAnim == Utils.LongG_Walk) // dont merge if, this is to fix sassy walking anim because half-body mode
+                        {
+                            MC.SetAnimationSpeed(Utils.WalkingAnim, 0.90f);
+
+                            if (!walkClipset.IsLoaded)
+                                Utils.Request(walkClipset, 800);
+                            else
+                                MC.SetMovementClipSet(walkClipset);
+                        }
+                    }
+
+                    //GTA.UI.Screen.ShowSubtitle("Walk Anim Called", 500);
+                }
+                else if (MC.IsPlayingAnimation(Utils.WalkingAnim))
+                {
+                    MC.Task.StopScriptedAnimationTask(Utils.WalkingAnim, AnimationBlendDelta.WalkBlendOut);
+                    MC.ResetMovementClipSet();
+                }
+            }
+
+            //RUN
+            if (!noRunAnim)
+            {
+                if (!MC.IsAiming && !noScoping && !MC.IsJumping && !MC.IsWalking && (MC.IsRunning || MC.IsSprinting) && !MC.IsReloading && !imReloading && !MC.IsFalling && !MC.IsInAir && !MC.IsGettingUp
+                && !MC.IsVaulting && !MC.IsDucking && !MC.IsInStealthMode && !MC.IsPerformingMeleeAction && !MC.IsInCover && !MC.IsInCover && !MC.IsGoingIntoCover && !Utils.IsLanding(MC) && Shootdodge == 0)
+                {
+                    if (!MC.IsPlayingAnimation(Utils.RunningAnim))
+                    {
+                        if (!Config.useSecondary)
+                            MC.Task.PlayAnimation(Utils.RunningAnim, AnimationBlendDelta.WalkBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48 | AnimationFlags.Loop, 0f);
+                        else
+                            MC.Task.PlayAnimation(Utils.RunningAnim, new AnimationBlendDelta(1f), new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | AnimationFlags.Loop, 0f);
+                    }
+                    //GTA.UI.Screen.ShowSubtitle("Run Anim Called", 500);
+                }
+                else if (MC.IsPlayingAnimation(Utils.RunningAnim))
+                    MC.Task.StopScriptedAnimationTask(Utils.RunningAnim, AnimationBlendDelta.WalkBlendOut);
+            }
+
+            //IDLE
+            if (!noIdleAnim)
+            {
+                if (!Game.IsControlPressed(GTA.Control.Attack) && !Game.IsControlPressed(GTA.Control.Attack2) && !Game.IsControlPressed(GTA.Control.Aim) && !Utils.IsSwitchingGun(MC) && !MC.IsShooting
+                    && !MC.IsAiming && !noScoping && !MC.IsJumping && !MC.IsWalking && !MC.IsRunning && !MC.IsSprinting && !MC.IsReloading && !imReloading && !MC.IsFalling && !MC.IsInAir
+                    && !MC.IsGettingUp && !MC.IsVaulting && !MC.IsDucking && !MC.IsInStealthMode && !MC.IsPerformingMeleeAction && !MC.IsInCover && !MC.IsGoingIntoCover && Shootdodge == 0)
+                {
+                    if (!MC.IsPlayingAnimation(Utils.IdleAnim))
+                        MC.Task.PlayAnimation(Utils.IdleAnim, AnimationBlendDelta.WalkBlendIn, AnimationBlendDelta.WalkBlendOut, -1, AnimationFlags.Loop | AnimationFlags.Secondary, 0f);
+                    //GTA.UI.Screen.ShowSubtitle("Idle Anim Called", 500);
+                }
+                else if (MC.IsPlayingAnimation(Utils.IdleAnim))
+                    MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, AnimationBlendDelta.WalkBlendOut);
+            }
+
+            if (MC.IsJumping || MC.IsVaulting)
+            {
+                if (!noIdleAnim)
+                    MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, new AnimationBlendDelta(-1f));
+                if (!noWalkAnim)
+                    MC.Task.StopScriptedAnimationTask(Utils.WalkingAnim, new AnimationBlendDelta(-1f));
+                if (!noRunAnim)
+                    MC.Task.StopScriptedAnimationTask(Utils.RunningAnim, new AnimationBlendDelta(-1f));
+            }
+        }
+
+        private void UpdateAiming()
+        {
+            if (MC.IsPlayingAnimation(Utils.AimAnim))
+            {
+                if (!MC.IsShooting && !ShooterL.IsShooting && !ShooterR.IsShooting)
+                {
+                    if (Utils.AimAnim == Utils.Gang)
+                        MC.SetAnimationCurrentTime(Utils.AimAnim, Utils.MapPitchToPhase(GameplayCamera.RelativePitch, 0f, 0.85f));
+                    else if (Utils.AimAnim == Utils.RPG)
+                        MC.SetAnimationCurrentTime(Utils.AimAnim, Utils.MapPitchToPhase(GameplayCamera.RelativePitch, 0f, 0.90f));
+                    else
+                        MC.SetAnimationCurrentTime(Utils.AimAnim, Utils.MapPitchToPhase(GameplayCamera.RelativePitch, 0f, 1f));
+                }
+                else
+                {
+                    float currentTime = MC.GetAnimationCurrentTime(Utils.AimAnim);
+                    float increment = Game.LastFrameTime * 1.5f; // Adjust speed here
+                    float newTime = Utils.Clamp(currentTime + increment, 0f, 1f);
+                    MC.SetAnimationCurrentTime(Utils.AimAnim, newTime);
+                }
+
+                if (Utils.AimAnim == Utils.LongG)
+                    GameplayCamera.SetThirdPersonCameraRelativePitchLimitsThisUpdate(-50f, 34f);
+                else if (Utils.AimAnim == Utils.Normal)
+                    GameplayCamera.SetThirdPersonCameraRelativePitchLimitsThisUpdate(-55f, 35f);
+                else if (Utils.AimAnim == Utils.Gang)
+                    GameplayCamera.SetThirdPersonCameraRelativePitchLimitsThisUpdate(-58f, 38f);
+                else if (Utils.AimAnim == Utils.MG)
+                    GameplayCamera.SetThirdPersonCameraRelativePitchLimitsThisUpdate(-56f, 37f);
+            }
+        }
+
+        // very experimental and stupid way to force recoil anim (will easily break <30fps)
+        private void PlayRecoilAnim()
+        {
+            if (Game.FPS <= 15f)
+                return;
+
+            bool isPressed = (Game.IsControlPressed(GTA.Control.Attack) && !Game.IsControlPressed(GTA.Control.Aim)) || (Game.IsControlPressed(GTA.Control.Aim) && !Game.IsControlPressed(GTA.Control.Attack)) || (Game.IsControlPressed(GTA.Control.Aim) && Game.IsControlPressed(GTA.Control.Attack));
+
+            float fpsTarget = 30f;
+            if (Game.FPS < 30f)
+                fpsTarget = 15f;
+
+            float fpsFactor = Game.FPS >= 30f ? 1f : Game.FPS / fpsTarget;
+
+            // Adjusted cooldown
+            int adjustedCooldown = (int)(recoilCooldown * fpsFactor);
+
+            if (Game.GameTime - lastRecoilTime >= adjustedCooldown && isPressed && GameplayCamera.RelativePitch < 25.6f)
+            {
+                recoilValue = Utils.recoilVal;
+                if (!isMinigun)
+                {
+                    if (Utils.AimAnim == Utils.Gang)
+                        MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, 0.85f));
+                    else if (Utils.AimAnim == Utils.RPG)
+                        MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, 0.9f));
+                    else
+                        MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, 1f));
+                }
+
+                lastRecoilTime = Game.GameTime;
+            }
+        }
+
+        private void PedKeeper(Ped ped)
+        {
+            if (!Utils.DoesExists(ped))
+                return;
+            Vector3 gunGrip = ped.Weapons.CurrentWeaponObject.Bones["gun_gripr"].GetPositionOffset(ped.Weapons.CurrentWeaponObject.Position);
+            if (ped == ShooterL && ped.Weapons.CurrentWeaponObject.IsAttachedTo(ped))
+            {
+                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelLeftHand], gunGrip + aimPosL, aimRotL, false, false, false, true, default);
+            }
+            else if (ped == ShooterR && ped.Weapons.CurrentWeaponObject.IsAttachedTo(ped))
+            {
+                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelRightHand], gunGrip + aimPosR, aimRotR, false, false, false, true, default);
+            }
+
+            if (ped.BlockPermanentEvents == false)
+                ped.BlockPermanentEvents = true;
+            if (!ped.IsBulletProof || ped.IsCollisionProof)
+                Function.Call(Hash.SET_ENTITY_PROOFS, ped, true, true, true, true, true, true, true, true);
+            if (ped.IsAmbientSpeechEnabled)
+                Function.Call(Hash.STOP_PED_SPEAKING, ped, true);
+            if (ped.GetCombatFloatAttribute(CombatFloatAttributes.WeaponDamageModifier) != Config.dmg)
+                ped.SetCombatFloatAttribute(CombatFloatAttributes.WeaponDamageModifier, Config.dmg);
+            if (ped.CanRagdoll)
+                ped.CanRagdoll = false;
+            if (ped.IsCollisionEnabled)
+                ped.IsCollisionEnabled = false;
+            if (!ped.IsPositionFrozen)
+                ped.IsPositionFrozen = true;
+
+            Utils.RequestGunHD(GunL);
+            Utils.RequestGunHD(GunR);
         }
     }
 }
