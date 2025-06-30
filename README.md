@@ -1,6 +1,6 @@
 # Dual Wield - Reboot
 
-Thanks to jedijosh920 for the <a href="https://www.gta5-mods.com/scripts/dual-wield">original mod</a>
+Thanks to jedijosh920 for the <a href="https://www.gta5-mods.com/scripts/dual-wield">original mod</a>  
 Animation resources (ycd files) made by <a href="https://www.patreon.com/wolffiremodz">WolfFire</a>
 
 Please credit these respected creators if you use this code for your project
