@@ -64,10 +64,10 @@ namespace DualWield
         private readonly CrClipAsset shootdodgeClipset = new CrClipAsset("amb@world_human_sunbathe@female@front@base", "base");
         private readonly CrClipAsset separatedHandAnim = new CrClipAsset("move_fall@weapons@jerrycan", "land_walk_arms");
 
-        private Vector3 aimPosL = new Vector3(0.035f, 0f, 0.015f);
-        private readonly Vector3 aimRotL = new Vector3(90f, 180f, 180f);
+        private Vector3 aimPosL = new Vector3(0.045f, 0f, 0.015f);
+        private readonly Vector3 aimRotL = new Vector3(80f, 180f, 180f);
 
-        public static Vector3 aimPosR = new Vector3(0.035f, 0f, -0.015f);
+        public static Vector3 aimPosR = new Vector3(0.045f, 0f, -0.015f);
         public static readonly Vector3 aimRotR = new Vector3(90f, 180f, 180f);
 
         public static int Shootdodge;
@@ -107,6 +107,9 @@ namespace DualWield
 
         private void OnTick(object sender, EventArgs e)
         {
+            MC = Game.Player.Character;
+            MC_Wpn = MC.Weapons.Current;
+
             // Load model OnTick! Ped simply not ready fast enough
             dummyLoaded = Function.Call<bool>(Hash.HAS_MODEL_LOADED, dummy);
             if (!dummyLoaded)
@@ -117,8 +120,6 @@ namespace DualWield
             }
 
             Utils.CheckConflict();
-            MC = Game.Player.Character;
-            MC_Wpn = MC.Weapons.Current;
             CheckController();
 
             DrawHUD();
@@ -131,7 +132,7 @@ namespace DualWield
 
             //Immediate End
             if (DualWielding && !gunSwapped && (
-                Utils.IsPedEnteringVehicle(MC) || MC.IsDead || Game.IsCutsceneActive || Game.Player.IsDead || !Game.Player.IsPlaying || MC.IsSwimming ||
+                Utils.IsPedEnteringVehicle(MC) || MC.IsDead || Game.IsCutsceneActive || !Game.Player.IsPlaying || MC.IsSwimming ||
                 (
                     (
                         (!Utils.IsMinigunType(MC_Wpn) && MC_Wpn.Ammo - MC_Wpn.AmmoInClip <= MC_Wpn.MaxAmmoInClip && MC_Wpn.MaxAmmoInClip != 1)
@@ -396,7 +397,14 @@ namespace DualWield
                             if ((leftFire && LeftMag > 0) || (rightFire && RightMag > 0))
                             {
                                 Vector3 coord = MC.Position - MC.ForwardVector * 9999f;
-                                Function.Call(Hash.SET_PED_SHOOTS_AT_COORD, MC, coord.X, coord.Y, coord.Z, true);
+                                if (Function.Call<int>(Hash.GET_PED_ORIGINAL_AMMO_TYPE_FROM_WEAPON, MC, MC_Wpn.Hash) == Function.Call<int>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, MC, MC_Wpn.Hash))
+                                    Function.Call(Hash.SET_PED_SHOOTS_AT_COORD, MC, coord.X, coord.Y, coord.Z, true);
+                                else
+                                {
+                                    Vector3 crosshair = World.GetCrosshairCoordinates().HitPosition;
+                                    //For Mk II Weapon Special Ammo, revert to the old v1 way 
+                                    Function.Call(Hash.SET_PED_SHOOTS_AT_COORD, MC, crosshair.X, crosshair.Y, crosshair.Z, false);
+                                }
                             }
 
                             if (MC.IsShooting)
@@ -828,7 +836,6 @@ namespace DualWield
             DualWielding = false;
             wasDualWielding = true;
             noScoping = false;
-            Utils.ShowPlayerWpn(true);
             dualWieldEndTime = Game.GameTime;
         }
 

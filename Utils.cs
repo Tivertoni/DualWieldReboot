@@ -115,7 +115,10 @@ namespace DualWield
             if (MC_Wpn == WeaponHash.Widowmaker || MC_Wpn == WeaponHash.UnholyHellbringer)
                 crosshair = GetCrosshairTarget(0f, ped);
 
-            Function.Call(Hash.SET_PED_SHOOTS_AT_COORD, ped, crosshair.X, crosshair.Y, crosshair.Z, true);
+            // For Mk II guns special ammo
+            if (!(WeaponDamageType(MC_Wpn) != 5 && MC_Wpn.Group != WeaponGroup.Sniper && MC_Wpn != WeaponHash.Widowmaker && (Function.Call<int>(Hash.GET_PED_ORIGINAL_AMMO_TYPE_FROM_WEAPON, MC, MC_Wpn.Hash) != Function.Call<int>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, MC, MC_Wpn.Hash))))
+                Function.Call(Hash.SET_PED_SHOOTS_AT_COORD, ped, crosshair.X, crosshair.Y, crosshair.Z, true);
+
             if (bulletTypeWpn)
             {
                 ParticleEffectAsset core = new ParticleEffectAsset("core");
@@ -160,13 +163,13 @@ namespace DualWield
             Vector3 spreadDir = forward + right * (float)Math.Tan(randYaw) + up * (float)Math.Tan(randPitch);
             spreadDir.Normalize();
 
-            Vector3 target = GameplayCamera.GetOffsetPosition(new Vector3 (0f, 1000f, 0f)) + (spreadDir * 1000f);
+            Vector3 target = GameplayCamera.GetOffsetPosition(new Vector3(0f, 1000f, 0f)) + (spreadDir * 1000f);
             float adjLeftRight;
             if (ped == ShooterL)
                 adjLeftRight = 0.25f;
             else adjLeftRight = -0.15f;
 
-            RaycastResult ray = World.Raycast(GameplayCamera.Position + new Vector3 (0f, adjLeftRight, 0f), target, IntersectFlags.Everything, MC);
+            RaycastResult ray = World.Raycast(GameplayCamera.Position + new Vector3(0f, adjLeftRight, 0f), target, IntersectFlags.Everything, MC);
             if (ray.DidHit && ray.HitPosition.DistanceTo(MC.Position) > 3f)
                 return ray.HitPosition;
 
@@ -185,11 +188,10 @@ namespace DualWield
 
         public static void ShowPlayerWpn(bool shown)
         {
-            if (AllowedGuns.Contains(MC_Wpn.Group))
-            {
-                Function.Call(Hash.SET_PED_CURRENT_WEAPON_VISIBLE, MC, shown, false, false, false);
-                MC.Weapons.CurrentWeaponObject.IsVisible = shown;
-            }
+            if (!AllowedGuns.Contains(MC_Wpn.Group) || MC.IsDead || Game.Player.IsDead)
+                return;
+            Function.Call(Hash.SET_PED_CURRENT_WEAPON_VISIBLE, MC, shown, false, false, false);
+            MC.Weapons.CurrentWeaponObject.IsVisible = shown;
         }
 
         public static void SortAnim(Weapon reference)
