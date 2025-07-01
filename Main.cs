@@ -983,9 +983,26 @@ namespace DualWield
         private void AnimationSystemV2() //fuck clean code, this is easier for me
         {
             bool rockets = MC_Wpn == WeaponHash.RPG || MC_Wpn == WeaponHash.HomingLauncher || MC_Wpn == WeaponHash.Firework;
-            bool noWalkAnim = Config.noWalkAnim && !isMinigun && !rockets;
-            bool noRunAnim = Config.noRunAnim && !isMinigun && !rockets;
-            bool noIdleAnim = Config.noIdleAnim && !isMinigun && !rockets;
+
+            bool baseCheck = !isMinigun && !rockets;
+
+            bool noWalkAnim;
+            bool noRunAnim;
+            bool noIdleAnim;
+            
+            if (baseCheck)
+            {
+                noWalkAnim = Config.noWalkAnim;
+                noIdleAnim = Config.noIdleAnim;
+                noRunAnim = Config.noRunAnim;
+            }
+            else
+            {
+                noWalkAnim = false;
+                noIdleAnim = false;
+                noRunAnim = false;
+            }
+
 
             //In-Cover & Jumping Pose
             if (!MC.IsAiming && (MC.IsJumping || Utils.IsLanding(MC)))
