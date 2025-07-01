@@ -1041,7 +1041,7 @@ namespace DualWield
             //WALK
             if (!noWalkAnim)
             {
-                if (!Game.IsControlPressed(GTA.Control.Sprint) && !MC.IsAiming && !noScoping && !MC.IsJumping && MC.IsWalking && !MC.IsRunning && !MC.IsSprinting && !MC.IsReloading && !imReloading && !MC.IsFalling && Utils.WalkingAnim != Utils.Normal_Walk
+                if (!Game.IsControlPressed(GTA.Control.Sprint) && !MC.IsAiming && !noScoping && !MC.IsJumping && MC.IsWalking && !MC.IsRunning && !MC.IsSprinting && !MC.IsReloading && !imReloading && !MC.IsFalling && Utils.WalkingAnim != Utils.NormalWalk
                     && !MC.IsInAir && !MC.IsGettingUp && !MC.IsVaulting && !MC.IsDucking && !MC.IsInStealthMode && !MC.IsPerformingMeleeAction && !MC.IsInCover && !MC.IsGoingIntoCover && !Utils.IsLanding(MC) && Shootdodge == 0)
                 //Because the sassy walk bug on Normal_Walk, we fall back to default
                 {

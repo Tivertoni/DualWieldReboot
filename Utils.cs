@@ -19,9 +19,9 @@ namespace DualWield
 
         //Animations
         public static readonly CrClipAsset Normal = new CrClipAsset("wfire_mbahdokek_dualwield@small_gun_core", "wfire_mbahdokek_dualwield_small_gun_sweep");
-        public static readonly CrClipAsset Normal_Idle = new CrClipAsset("wfire_mbahdokek_dualwield@small_gun_core", "wfire_mbahdokek_dualwield_small_gun_idle");
-        public static readonly CrClipAsset Normal_Walk = new CrClipAsset("wfire_mbahdokek_dualwield@small_gun_core", "wfire_mbahdokek_dualwield_small_gun_walk");
-        public static readonly CrClipAsset Normal_Run = new CrClipAsset("wfire_mbahdokek_dualwield@small_gun_core", "wfire_mbahdokek_dualwield_small_gun_run");
+        public static readonly CrClipAsset NormalIdle = new CrClipAsset("wfire_mbahdokek_dualwield@small_gun_core", "wfire_mbahdokek_dualwield_small_gun_idle");
+        public static readonly CrClipAsset NormalWalk = new CrClipAsset("wfire_mbahdokek_dualwield@small_gun_core", "wfire_mbahdokek_dualwield_small_gun_walk");
+        public static readonly CrClipAsset NormalRun = new CrClipAsset("wfire_mbahdokek_dualwield@small_gun_core", "wfire_mbahdokek_dualwield_small_gun_run");
 
         public static readonly CrClipAsset Gang = new CrClipAsset("wfire_mbahdokek_dualwield@gangsta_gun_core", "wfire_mbahdokek_dualwield_gangsta_gun_sweep");
         public static readonly CrClipAsset GangIdle = new CrClipAsset("wfire_mbahdokek_dualwield@gangsta_gun_core", "wfire_mbahdokek_dualwield_gangsta_gun_idle");
@@ -211,9 +211,9 @@ namespace DualWield
                 else
                 {
                     AimAnim = Normal;
-                    IdleAnim = Normal_Idle;
-                    WalkingAnim = Normal_Walk;
-                    RunningAnim = Normal_Run;
+                    IdleAnim = NormalIdle;
+                    WalkingAnim = NormalWalk;
+                    RunningAnim = NormalRun;
                     recoilVal = 20f;
                 }
 
@@ -225,9 +225,9 @@ namespace DualWield
                 if (longWpn)
                 {
                     AimAnim = Normal;
-                    IdleAnim = Normal_Idle;
-                    WalkingAnim = Normal_Walk;
-                    RunningAnim = Normal_Run;
+                    IdleAnim = NormalIdle;
+                    WalkingAnim = NormalWalk;
+                    RunningAnim = NormalRun;
                     recoilVal = 10f;
                 }
                 else
@@ -268,9 +268,9 @@ namespace DualWield
                 else if (reference.Hash == WeaponHash.SnowballLauncher || reference.Hash == WeaponHash.CompactGrenadeLauncher || reference.Hash == WeaponHash.GrenadeLauncher || reference.Hash == WeaponHash.GrenadeLauncherSmoke)
                 {
                     AimAnim = Normal;
-                    IdleAnim = Normal_Idle;
-                    WalkingAnim = Normal_Walk;
-                    RunningAnim = Normal_Run;
+                    IdleAnim = NormalIdle;
+                    WalkingAnim = NormalWalk;
+                    RunningAnim = NormalRun;
                     recoilVal = 10f;
                 }
                 else
@@ -293,9 +293,9 @@ namespace DualWield
 
                 if (AimAnim == Normal)
                 {
-                    IdleAnim = Normal_Idle;
-                    WalkingAnim = Normal_Walk;
-                    RunningAnim = Normal_Run;
+                    IdleAnim = NormalIdle;
+                    WalkingAnim = NormalWalk;
+                    RunningAnim = NormalRun;
                     recoilVal = 10f;
                 }
                 else
