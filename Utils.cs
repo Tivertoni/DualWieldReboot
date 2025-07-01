@@ -58,7 +58,7 @@ namespace DualWield
         public static WeaponComponentHash[] weaponComponentsHashCache;
 
         private static readonly Random rand = new Random();
-
+        
         public static bool AnimsLoaded()
         {
             bool loaded = Request(Normal.ClipDictionary, 800) && Request(Gang.ClipDictionary, 800) && Request(MG.ClipDictionary, 800) && Request(RPG.ClipDictionary, 800) && Request(LongG.ClipDictionary, 800) && Request(MiniG.ClipDictionary, 800);
@@ -402,7 +402,19 @@ namespace DualWield
 
             return toMin + (toMax - toMin) * t;
         }
+        public static float GetAimAnimSpeedByClipAsset()
+        {
+            if (AimAnim == Gang)
+            {
+                return 0.85f;
+            }
+            if (AimAnim == RPG)
+            {
+                return 0.90f;
+            }
 
+            return 1f;
+        }
         public static (string textureDict, string textureName)? WeaponGroupIcon(WeaponGroup group)
         {
             switch (group)
