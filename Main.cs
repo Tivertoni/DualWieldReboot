@@ -1158,12 +1158,8 @@ namespace DualWield
                 return;
 
             bool isPressed = Game.IsControlPressed(GTA.Control.Attack) || Game.IsControlPressed(GTA.Control.Aim);
-
-            float fpsTarget = 30f;
-            if (Game.FPS < 30f)
-                fpsTarget = 15f;
-
-            float fpsFactor = Game.FPS >= 30f ? 1f : Game.FPS / fpsTarget;
+            
+            float fpsFactor = Game.FPS < 30f ? Game.FPS / 15f : 1f; //15f Represents the FPS-Target
 
             // Adjusted cooldown
             int adjustedCooldown = (int)(recoilCooldown * fpsFactor);
@@ -1177,6 +1173,7 @@ namespace DualWield
                     if (Utils.AimAnim == Utils.Gang) maxTime = 0.85f;
                     else if (Utils.AimAnim == Utils.RPG) maxTime = 0.9f;
                     else maxTime = 1f;
+                        
                     
                     MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, maxTime));
                 }
