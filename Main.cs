@@ -1157,7 +1157,7 @@ namespace DualWield
             if (Game.FPS <= 15f)
                 return;
 
-            bool isPressed = (Game.IsControlPressed(GTA.Control.Attack) && !Game.IsControlPressed(GTA.Control.Aim)) || (Game.IsControlPressed(GTA.Control.Aim) && !Game.IsControlPressed(GTA.Control.Attack)) || (Game.IsControlPressed(GTA.Control.Aim) && Game.IsControlPressed(GTA.Control.Attack));
+            bool isPressed = Game.IsControlPressed(GTA.Control.Attack) || Game.IsControlPressed(GTA.Control.Aim);
 
             float fpsTarget = 30f;
             if (Game.FPS < 30f)
