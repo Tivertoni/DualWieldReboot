@@ -66,18 +66,17 @@ namespace DualWield
 
         public static void Destroy()
         {
-            if (Active)
+            if (!Active) return;
+            
+            if (Camera != null)
             {
-                if (Camera != null)
-                {
-                    Camera.IsActive = false;
-                    Camera.Delete();
-                    Camera = null;
-                }
-                ScriptCameraDirector.StopRendering();
-                SafeRemoveBoneDraw(Main.MC.Handle);
-                Active = false;
+                Camera.IsActive = false;
+                Camera.Delete();
+                Camera = null;
             }
+            ScriptCameraDirector.StopRendering();
+            SafeRemoveBoneDraw(Main.MC.Handle);
+            Active = false;
         }
 
         public static void Update()
