@@ -5,7 +5,6 @@ using GTA.UI;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 
@@ -16,15 +15,15 @@ namespace DualWield
 {
     public class Main : Script
     {
-        public static bool DualWielding = false;
-        private bool wasDualWielding = false;
+        public static bool DualWielding;
+        private bool wasDualWielding;
         private bool isMinigun;
-        private bool imReloading = false;
-        private bool dummyLoaded = false;
-        private bool unlimitedAmmo = false;
-        private bool gunSwapped = false;
-        private bool noScoping = false;
-        private bool aiming = false;
+        private bool imReloading;
+        private bool dummyLoaded;
+        private bool unlimitedAmmo;
+        private bool gunSwapped;
+        private bool noScoping;
+        private bool aiming;
 
         private int? dualWieldEndTime = null;
         private int? aimStartTime = null;
@@ -32,7 +31,7 @@ namespace DualWield
 
         private int LeftMag;
         private int RightMag;
-        private int imReloadingPhase = 0; // 0 = not reloading, 1 = reloading left, 2 = reloading right
+        private ReloadingPhase imReloadingPhase = ReloadingPhase.NotReloading;
         private int snipingEndTime = 0;
         private readonly int shootReadyDelay = 600; //wait for aiming anim to finish pointing gun
         private readonly int aimExitDelay = 800; //hold crosshair for this long after done shooting
@@ -107,6 +106,9 @@ namespace DualWield
 
         private void OnTick(object sender, EventArgs e)
         {
+            const int SNIPING_TIME = 1200;
+            const int WIDOWMAKER_SNIPING_TIME = 450;
+            
             MC = Game.Player.Character;
             MC_Wpn = MC.Weapons.Current;
 
@@ -245,17 +247,16 @@ namespace DualWield
                             if (leftNotFull)
                             {
                                 Reload1();
-                                imReloading = true;
-                                imReloadingPhase = 1;
-                                reloadTimer = 0f;
+                                imReloadingPhase = ReloadingPhase.ReloadingLeft;
                             }
-                            else if (rightNotFull)
+                            else //If statement can be removed because it's already checked in the parent if-statement
                             {
                                 Reload2();
-                                imReloading = true;
-                                imReloadingPhase = 2;
-                                reloadTimer = 0f;
+                                imReloadingPhase = ReloadingPhase.ReloadingRight;
                             }
+                            
+                            imReloading = true;
+                            reloadTimer = 0f;
                         }
                     }
                     else
@@ -264,10 +265,10 @@ namespace DualWield
 
                         if (reloadTimer >= reloadDelay && !MC.IsReloading)
                         {
-                            if (imReloadingPhase == 1 && (rightNotFull))
+                            if (imReloadingPhase == ReloadingPhase.ReloadingLeft && rightNotFull)
                             {
                                 Reload2();
-                                imReloadingPhase = 2;
+                                imReloadingPhase = ReloadingPhase.ReloadingRight;
                                 reloadTimer = 0f;
                             }
                             else
@@ -319,18 +320,9 @@ namespace DualWield
                 {
                     if (imReloading)
                     {
-                        if (imReloadingPhase == 1)
-                        {
-                            GunL.IsVisible = false;
-                            GunR.IsVisible = false;
-                            Utils.ShowPlayerWpn(true);
-                        }
-                        else if (imReloadingPhase == 2)
-                        {
-                            GunL.IsVisible = true;
-                            GunR.IsVisible = false;
-                            Utils.ShowPlayerWpn(true);
-                        }
+                        GunL.IsVisible = imReloadingPhase == ReloadingPhase.ReloadingRight;
+                        GunR.IsVisible = false;
+                        Utils.ShowPlayerWpn(true);
                     }
                     else
                     {
@@ -342,11 +334,26 @@ namespace DualWield
 
 
                 //ShootingSequence
-                bool leftFire = Game.IsControlPressed(GTA.Control.Attack);
-                bool rightFire = Game.IsControlPressed(GTA.Control.Aim);
-                bool semiLeft = Game.IsControlJustPressed(GTA.Control.Attack);
-                bool semiRight = Game.IsControlJustPressed(GTA.Control.Aim);
+                bool leftFire;
+                bool rightFire;
+                bool semiLeft;
+                bool semiRight;
 
+                if (Game.LastInputMethod == InputMethod.GamePad)
+                {
+                    leftFire = Game.IsControlPressed(GTA.Control.Aim);
+                    rightFire = Game.IsControlPressed(GTA.Control.Attack);
+                    semiLeft = Game.IsControlJustPressed(GTA.Control.Aim);
+                    semiRight = Game.IsControlJustPressed(GTA.Control.Attack);
+                }
+                else
+                {
+                    leftFire = Game.IsControlPressed(GTA.Control.Attack);
+                    rightFire = Game.IsControlPressed(GTA.Control.Aim);
+                    semiLeft = Game.IsControlJustPressed(GTA.Control.Attack);
+                    semiRight = Game.IsControlJustPressed(GTA.Control.Aim);
+                }
+                
                 if (Game.WasCheatStringJustEntered("RAMBO"))
                 {
                     if (unlimitedAmmo == false)
@@ -357,19 +364,11 @@ namespace DualWield
                     else unlimitedAmmo = false;
                 }
 
-                if (Game.LastInputMethod == InputMethod.GamePad)
-                {
-                    leftFire = Game.IsControlPressed(GTA.Control.Aim);
-                    rightFire = Game.IsControlPressed(GTA.Control.Attack);
-                    semiLeft = Game.IsControlJustPressed(GTA.Control.Aim);
-                    semiRight = Game.IsControlJustPressed(GTA.Control.Attack);
-                }
-
                 Game.DisableControlThisFrame(GTA.Control.Aim);
                 Game.DisableControlThisFrame(GTA.Control.Attack);
                 Game.DisableControlThisFrame(GTA.Control.Attack2);
 
-                //Force remove ptfx
+                //Force remove particle-fx
                 MC.Weapons.CurrentWeaponObject.RemoveParticleEffects();
 
                 if (Utils.WeaponDamageType(MC_Wpn) != 5 && MC_Wpn.Group != WeaponGroup.Sniper && MC_Wpn != WeaponHash.Widowmaker)
@@ -462,6 +461,7 @@ namespace DualWield
                     ShooterL.Weapons.Current.InfiniteAmmoClip = false;
                     ShooterR.Weapons.Current.InfiniteAmmoClip = false;
 
+
                     if (semiLeft && !semiRight && LeftMag != 0)
                     {
                         noScoping = true;
@@ -474,7 +474,7 @@ namespace DualWield
                             PlayRecoilAnim();
                             ShooterL.Weapons.Current.AmmoInClip -= 1;
                         }
-                        snipingEndTime = Game.GameTime + 1200;
+                        snipingEndTime = Game.GameTime + SNIPING_TIME;
                     }
                     if (semiRight && !semiLeft && RightMag != 0)
                     {
@@ -488,9 +488,9 @@ namespace DualWield
                             PlayRecoilAnim();
                             ShooterR.Weapons.Current.AmmoInClip -= 1;
                         }
-                        snipingEndTime = Game.GameTime + 1200;
+                        snipingEndTime = Game.GameTime + SNIPING_TIME;
                     }
-                    if ((semiLeft && LeftMag != 0) && (semiRight && RightMag != 0))
+                    if (semiLeft && LeftMag != 0 && semiRight && RightMag != 0)
                     {
                         noScoping = true;
                         if (Utils.GunReadyToShoot(ShooterL) && Utils.GunReadyToShoot(ShooterR) && MC.IsPlayingAnimation(Utils.AimAnim))
@@ -506,7 +506,7 @@ namespace DualWield
                             ShooterR.Weapons.Current.AmmoInClip -= 1;
                             PlayRecoilAnim();
                         }
-                        snipingEndTime = Game.GameTime + 1200;
+                        snipingEndTime = Game.GameTime + SNIPING_TIME;
                     }
                 }
                 // Separated sniping to prevent scope overlay
@@ -523,7 +523,7 @@ namespace DualWield
                                 LeftMag--;
                             PlayRecoilAnim();
                         }
-                        snipingEndTime = Game.GameTime + 1200;
+                        snipingEndTime = Game.GameTime + SNIPING_TIME;
 
                     }
                     if (semiRight && !semiLeft && RightMag != 0)
@@ -539,7 +539,7 @@ namespace DualWield
                         }
                         snipingEndTime = Game.GameTime + 1200;
                     }
-                    if ((semiLeft && LeftMag != 0) && (semiRight && RightMag != 0))
+                    if (semiLeft && LeftMag != 0 && semiRight && RightMag != 0)
                     {
                         noScoping = true;
                         if (Utils.GunReadyToShoot(ShooterL) && Utils.GunReadyToShoot(ShooterR) && MC.IsPlayingAnimation(Utils.AimAnim))
@@ -560,7 +560,7 @@ namespace DualWield
                 // Fuck Widowmaker, GTFO!
                 else if (MC_Wpn == WeaponHash.Widowmaker)
                 {
-                    if ((leftFire && LeftMag != 0) && (rightFire && RightMag != 0))
+                    if (leftFire && LeftMag != 0 && rightFire && RightMag != 0)
                     {
                         noScoping = true;
                         if (Utils.GunReadyToShoot(ShooterL) && Utils.GunReadyToShoot(ShooterR))
@@ -574,7 +574,9 @@ namespace DualWield
                                 RightMag--;
                             PlayRecoilAnim();
                         }
-                        snipingEndTime = Game.GameTime + 450;
+
+
+                        snipingEndTime = Game.GameTime + WIDOWMAKER_SNIPING_TIME;
                     }
                 }
 
@@ -589,8 +591,8 @@ namespace DualWield
                 }
 
                 //Prevent projectile damaging player - early collision
-                List<Projectile> projectiles = World.GetNearbyProjectiles(MC.Position, 5f).Cast<Projectile>().ToList();
-                foreach (var proj in projectiles)
+                Projectile[] projectiles = World.GetNearbyProjectiles(MC.Position, 5f);
+                foreach (Projectile proj in projectiles)
                 {
                     if (proj.OwnerEntity == MC || proj.OwnerEntity == ShooterL || proj.OwnerEntity == ShooterR)
                     {
@@ -639,57 +641,95 @@ namespace DualWield
             if (DualWielding)
                 return;
 
-            else if (AllowedGuns.Contains(MC_Wpn.Group) && !MC.IsInVehicle() &&
-                ((!Utils.IsMinigunType(MC_Wpn) && MC_Wpn.Ammo - MC_Wpn.AmmoInClip >= MC_Wpn.MaxAmmoInClip && MC_Wpn.MaxAmmoInClip != 1)
-                || (!Utils.IsMinigunType(MC_Wpn) && MC_Wpn.Ammo - MC_Wpn.AmmoInClip >= (MC_Wpn.MaxAmmoInClip * 2) && MC_Wpn.MaxAmmoInClip == 1)
-                || (Utils.IsMinigunType(MC_Wpn) && MC_Wpn.AmmoInClip > 1))
-                && MC_Wpn.AmmoInClip != 0 && !MC.IsRagdoll && MC.IsAlive && !MC.IsReloading && !MC.IsFalling && !MC.IsSwimming && Shootdodge == 0 && MC_Wpn != null && MC_Wpn.IsPresent)
+            if (MC_Wpn == null || !MC_Wpn.IsPresent)
+                return;
+
+            if (
+                MC.IsInVehicle() ||
+                MC.IsRagdoll ||
+                !MC.IsAlive ||
+                MC.IsReloading ||
+                MC.IsFalling ||
+                MC.IsSwimming ||
+                Shootdodge != 0
+            )
+                return;
+
+            if (!AllowedGuns.Contains(MC_Wpn.Group))
+                return;
+
+            int ammo = MC_Wpn.Ammo;
+            int ammoInClip = MC_Wpn.AmmoInClip;
+            int maxAmmoInClip = MC_Wpn.MaxAmmoInClip;
+
+            if (ammoInClip == 0)
+                return;
+
+            if (!isMinigun)
             {
-                if (isMinigun)
+                int diff = ammo - ammoInClip;
+
+                if (maxAmmoInClip == 1)
                 {
-                    // Minigun have MaxAmmo = MaxAmmoInClip behavior
-                    int total = MC_Wpn.Ammo;
-                    LeftMag = total / 2;
-                    RightMag = total - LeftMag;
-                    MC_Wpn.Ammo = MC_Wpn.MaxAmmo;
-                    MC_Wpn.AmmoInClip = MC_Wpn.MaxAmmoInClip;
+                    if (diff < 2) // maxAmmoInClip * 2 ->  1 * 2 -> 2
+                        return;
                 }
                 else
                 {
-                    LeftMag = MC_Wpn.AmmoInClip;
-                    RightMag = MC_Wpn.AmmoInClip;
-                    MC_Wpn.Ammo -= LeftMag + RightMag;
+                    if (diff < maxAmmoInClip)
+                        return;
                 }
-
-                if (Conflict)
-                    Notified = false;
-
-                imReloading = false;
-
-                ShooterL = CreateFakeShooter();
-                ShooterR = CreateFakeShooter();
-
-                if (ShooterL == null || ShooterR == null)
-                    return;
-                Utils.SortAnim(MC.Weapons.Current);
-                Utils.ShowPlayerWpn(false);
-                MC_Wpn.InfiniteAmmoClip = true;
-                ShooterL.Weapons.Current.InfiniteAmmoClip = true;
-                ShooterL.Weapons.Current.InfiniteAmmo = true;
-                ShooterR.Weapons.Current.InfiniteAmmoClip = true;
-                ShooterR.Weapons.Current.InfiniteAmmo = true;
-                Utils.AlterWeaponClipSet(true, moveClipset);
-
-                lastWpn = MC_Wpn;
-                DualWielding = true;
-                wasDualWielding = false;
-                dualWieldEndTime = null;
             }
+            else
+            {
+                if (ammoInClip <= 1)
+                    return;
+            }
+
+            if (isMinigun)
+            {
+                // Minigun have MaxAmmo = MaxAmmoInClip behavior
+                int total = MC_Wpn.Ammo;
+                LeftMag = total / 2;
+                RightMag = total - LeftMag;
+                MC_Wpn.Ammo = MC_Wpn.MaxAmmo;
+                MC_Wpn.AmmoInClip = MC_Wpn.MaxAmmoInClip;
+            }
+            else
+            {
+                LeftMag = MC_Wpn.AmmoInClip;
+                RightMag = MC_Wpn.AmmoInClip;
+                MC_Wpn.Ammo -= LeftMag + RightMag;
+            }
+
+            if (Conflict)
+                Notified = false;
+
+            imReloading = false;
+
+            ShooterL = CreateFakeShooter();
+            ShooterR = CreateFakeShooter();
+
+            if (ShooterL == null || ShooterR == null)
+                return;
+            Utils.SortAnim(MC.Weapons.Current);
+            Utils.ShowPlayerWpn(false);
+            MC_Wpn.InfiniteAmmoClip = true;
+            ShooterL.Weapons.Current.InfiniteAmmoClip = true;
+            ShooterL.Weapons.Current.InfiniteAmmo = true;
+            ShooterR.Weapons.Current.InfiniteAmmoClip = true;
+            ShooterR.Weapons.Current.InfiniteAmmo = true;
+            Utils.AlterWeaponClipSet(true, moveClipset);
+
+            lastWpn = MC_Wpn;
+            DualWielding = true;
+            wasDualWielding = false;
+            dualWieldEndTime = null;
         }
 
         private Ped CreateFakeShooter()
         {
-            Ped ped = (Ped)Ped.FromHandle(Function.Call<int>(Hash.CREATE_PED, 26, dummy, MC.Position.X, MC.Position.Y, MC.Position.Z + 5f, MC.Heading, false, false));
+            Ped ped = (Ped)Entity.FromHandle(Function.Call<int>(Hash.CREATE_PED, 26, dummy, MC.Position.X, MC.Position.Y, MC.Position.Z + 5f, MC.Heading, false, false));
             ped.IsVisible = false;
             ped.Weapons.Give(MC_Wpn.Hash, MC_Wpn.MaxAmmo, true, true);
             Utils.GetAttachments(ped);
@@ -986,7 +1026,7 @@ namespace DualWield
             {
                 if (!Game.IsControlPressed(GTA.Control.Sprint) && !MC.IsAiming && !noScoping && !MC.IsJumping && MC.IsWalking && !MC.IsRunning && !MC.IsSprinting && !MC.IsReloading && !imReloading && !MC.IsFalling && Utils.WalkingAnim != Utils.Normal_Walk
                     && !MC.IsInAir && !MC.IsGettingUp && !MC.IsVaulting && !MC.IsDucking && !MC.IsInStealthMode && !MC.IsPerformingMeleeAction && !MC.IsInCover && !MC.IsGoingIntoCover && !Utils.IsLanding(MC) && Shootdodge == 0)
-                //Because the sassy walk bug on Normal_Walk, we fallback to default
+                //Because the sassy walk bug on Normal_Walk, we fall back to default
                 {
                     if (!MC.IsPlayingAnimation(Utils.WalkingAnim))
                     {
@@ -997,7 +1037,7 @@ namespace DualWield
                     }
                     if (MC.IsPlayingAnimation(Utils.WalkingAnim) && !Config.useSecondary)
                     {
-                        if (Utils.WalkingAnim == Utils.GangWalk || Utils.WalkingAnim == Utils.MG_Walk || Utils.WalkingAnim == Utils.LongG_Walk) // dont merge if, this is to fix sassy walking anim because half-body mode
+                        if (Utils.WalkingAnim == Utils.GangWalk || Utils.WalkingAnim == Utils.MG_Walk || Utils.WalkingAnim == Utils.LongG_Walk) // don't merge if, this is to fix sassy walking anim because half-body mode
                         {
                             MC.SetAnimationSpeed(Utils.WalkingAnim, 0.90f);
 
