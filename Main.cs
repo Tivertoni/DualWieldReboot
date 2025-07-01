@@ -958,19 +958,19 @@ namespace DualWield
 
                 if (Game.IsControlPressed(GTA.Control.PhoneRight))
                 {
-                    padButtonTimer += Game.LastFrameTime * 1000;
-                    if (padButtonTimer >= 1000f) // Holding timer
+                    const int HOLDING_TIME = 1000;
+                    padButtonTimer += Game.LastFrameTime * HOLDING_TIME;
+                    if (padButtonTimer >= HOLDING_TIME) // Holding timer
                     {
                         if (!DualWielding)
                         {
                             StartDualWield();
-                            padButtonTimer2 = 3000f; // Cooldown after gamepad hold button
                         }
                         else
                         {
                             EndOnPressed();
-                            padButtonTimer2 = 3000f;
                         }
+                        padButtonTimer2 = 3000f;// Cooldown after gamepad hold button
                     }
                 }
                 else
