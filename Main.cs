@@ -1173,12 +1173,12 @@ namespace DualWield
                 recoilValue = Utils.recoilVal;
                 if (!isMinigun)
                 {
-                    if (Utils.AimAnim == Utils.Gang)
-                        MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, 0.85f));
-                    else if (Utils.AimAnim == Utils.RPG)
-                        MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, 0.9f));
-                    else
-                        MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, 1f));
+                    float maxTime;
+                    if (Utils.AimAnim == Utils.Gang) maxTime = 0.85f;
+                    else if (Utils.AimAnim == Utils.RPG) maxTime = 0.9f;
+                    else maxTime = 1f;
+                    
+                    MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, maxTime));
                 }
 
                 lastRecoilTime = Game.GameTime;
