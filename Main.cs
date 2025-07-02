@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
+using DualWield.Enums;
 
 
 //MC_Wpn InfiniteAmmoClip to fix rpgs reload visually
@@ -19,7 +20,7 @@ namespace DualWield
         private bool wasDualWielding;
         private bool isMinigun;
         private bool imReloading;
-        private bool dummyLoaded;
+        private bool isDummyLoaded;
         private bool unlimitedAmmo;
         private bool gunSwapped;
         private bool noScoping;
@@ -55,16 +56,16 @@ namespace DualWield
         { WeaponGroup.Pistol, WeaponGroup.SMG, WeaponGroup.AssaultRifle, WeaponGroup.MG, WeaponGroup.Shotgun,
             WeaponGroup.Heavy, WeaponGroup.Sniper };
 
-        private readonly ClipSet moveClipset = new ClipSet("weapons@pistol@");
-        private readonly ClipSet walkClipset = new ClipSet("move_m@brave");
-        private readonly CrClipAsset shootdodgeClipset = new CrClipAsset("amb@world_human_sunbathe@female@front@base", "base");
-        private readonly CrClipAsset separatedHandAnim = new CrClipAsset("move_fall@weapons@jerrycan", "land_walk_arms");
+        private static readonly ClipSet MoveClipset = new ClipSet("weapons@pistol@");
+        private static readonly ClipSet WalkClipset = new ClipSet("move_m@brave");
+        private static readonly CrClipAsset ShootdodgeClipset = new CrClipAsset("amb@world_human_sunbathe@female@front@base", "base");
+        private static readonly CrClipAsset SeparatedHandAnim = new CrClipAsset("move_fall@weapons@jerrycan", "land_walk_arms");
 
-        private Vector3 aimPosL = new Vector3(0.045f, 0f, 0.015f);
-        private readonly Vector3 aimRotL = new Vector3(80f, 180f, 180f);
+        private static readonly Vector3 AimPosL = new Vector3(0.045f, 0f, 0.015f);
+        private static readonly Vector3 AimRotL = new Vector3(80f, 180f, 180f);
 
-        public static Vector3 aimPosR = new Vector3(0.045f, 0f, -0.015f);
-        public static readonly Vector3 aimRotR = new Vector3(90f, 180f, 180f);
+        private static readonly Vector3 AimPosR = new Vector3(0.045f, 0f, -0.015f);
+        private static readonly Vector3 AimRotR = new Vector3(90f, 180f, 180f);
 
         public static int Shootdodge;
         public static Type DodgeType;
@@ -85,28 +86,15 @@ namespace DualWield
         private const int AIM_EXIT_DELAY = 800; //hold crosshair for this long after done shooting
         public Main()
         {
-            Tick += OnTick;
-            KeyDown += OnKeyDown;
             Utils.Logger.Empty();
             Utils.ConflictGetter();
             Utils.WeaponComponentsHashCache = WeaponComponent.GetAllHashes();
+            
+            Tick += OnTick;
+            KeyDown += OnKeyDown;
+            Aborted += OnAbort;
         }
-
-        private void OnKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode != Config.toggleKey)
-                return;
-            if (Utils.AnimsLoaded() && dummyLoaded)
-            {
-                if (!DualWielding)
-                {
-                    StartDualWield();
-                }
-                else
-                    EndOnPressed();
-            }
-        }
-
+        
         private void OnTick(object sender, EventArgs e)
         {
             const int SNIPING_TIME = 1200;
@@ -116,8 +104,8 @@ namespace DualWield
             MC_Wpn = MC.Weapons.Current;
 
             // Load model OnTick! Ped simply not ready fast enough
-            dummyLoaded = Function.Call<bool>(Hash.HAS_MODEL_LOADED, dummy);
-            if (!dummyLoaded)
+            isDummyLoaded = Function.Call<bool>(Hash.HAS_MODEL_LOADED, dummy);
+            if (!isDummyLoaded)
             {
                 Function.Call(Hash.REQUEST_MODEL, dummy);
                 Utils.Logger.Log("Loading dummy model, returning...");
@@ -222,11 +210,11 @@ namespace DualWield
                 //ShootdodgeSequence
                 if (Shootdodge != 0)
                 {
-                    if (!MC.IsPlayingAnimation(shootdodgeClipset))
-                        MC.Task.PlayAnimation(shootdodgeClipset, AnimationBlendDelta.NormalBlendIn, AnimationBlendDelta.NormalBlendOut, -1, (AnimationFlags)49, 0f);
+                    if (!MC.IsPlayingAnimation(ShootdodgeClipset))
+                        MC.Task.PlayAnimation(ShootdodgeClipset, AnimationBlendDelta.NormalBlendIn, AnimationBlendDelta.NormalBlendOut, -1, (AnimationFlags)49, 0f);
                 }
-                else if (MC.IsPlayingAnimation(shootdodgeClipset))
-                    MC.Task.StopScriptedAnimationTask(shootdodgeClipset);
+                else if (MC.IsPlayingAnimation(ShootdodgeClipset))
+                    MC.Task.StopScriptedAnimationTask(ShootdodgeClipset);
 
 
                 //ReloadSequence
@@ -249,12 +237,12 @@ namespace DualWield
 
                             if (leftNotFull)
                             {
-                                Reload1();
+                                ReloadLeft();
                                 imReloadingPhase = ReloadingPhase.ReloadingLeft;
                             }
                             else //If statement can be removed because it's already checked in the parent if-statement
                             {
-                                Reload2();
+                                ReloadRight();
                                 imReloadingPhase = ReloadingPhase.ReloadingRight;
                             }
                             
@@ -270,7 +258,7 @@ namespace DualWield
                         {
                             if (imReloadingPhase == ReloadingPhase.ReloadingLeft && rightNotFull)
                             {
-                                Reload2();
+                                ReloadRight();
                                 imReloadingPhase = ReloadingPhase.ReloadingRight;
                                 reloadTimer = 0f;
                             }
@@ -636,6 +624,22 @@ namespace DualWield
                 StartDualWield();
             }
         }
+        private void OnAbort(object sender, EventArgs e) => EndDualWield();
+        private void OnKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Config.toggleKey) return;
+                
+            //MARK: What if the game is paused, should this still be called?
+            if (Utils.AnimsLoaded() && isDummyLoaded)
+            {
+                if (!DualWielding)
+                {
+                    StartDualWield();
+                }
+                else
+                    EndOnPressed();
+            }
+        }
 
         private void StartDualWield()
         {
@@ -722,7 +726,7 @@ namespace DualWield
             ShooterL.Weapons.Current.InfiniteAmmo = true;
             ShooterR.Weapons.Current.InfiniteAmmoClip = true;
             ShooterR.Weapons.Current.InfiniteAmmo = true;
-            Utils.AlterWeaponClipSet(true, moveClipset);
+            Utils.AlterWeaponClipSet(true, MoveClipset);
 
             lastWpn = MC_Wpn;
             DualWielding = true;
@@ -746,11 +750,11 @@ namespace DualWield
             }
         }
 
-        private void Reload1() // Reload Left Weapon
+        private void ReloadLeft()
         {
             int lastMag = MC_Wpn.AmmoInClip; // needed to replace Task.ReloadWeapon technique;
             MC.BlocksAnyDamageButHasReactions = true;
-            MC.Task.StopScriptedAnimationTask(separatedHandAnim, AnimationBlendDelta.InstantBlendOut);
+            MC.Task.StopScriptedAnimationTask(SeparatedHandAnim, AnimationBlendDelta.InstantBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.WalkingAnim, AnimationBlendDelta.NormalBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.RunningAnim, AnimationBlendDelta.NormalBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, AnimationBlendDelta.NormalBlendOut);
@@ -789,12 +793,12 @@ namespace DualWield
             MC.BlocksAnyDamageButHasReactions = false;
         }
 
-        private void Reload2() // Reload Right Weapon
+        private void ReloadRight()
         {
             // Simply a copy with change in ammo
             int lastMag = MC_Wpn.AmmoInClip;
             MC.BlocksAnyDamageButHasReactions = true;
-            MC.Task.StopScriptedAnimationTask(separatedHandAnim, AnimationBlendDelta.InstantBlendOut);
+            MC.Task.StopScriptedAnimationTask(SeparatedHandAnim, AnimationBlendDelta.InstantBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.WalkingAnim, AnimationBlendDelta.NormalBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.RunningAnim, AnimationBlendDelta.NormalBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, AnimationBlendDelta.NormalBlendOut);
@@ -830,7 +834,7 @@ namespace DualWield
         {
             Game.Player.ForcedAim = false;
             Utils.SetInverseKinematics(false);
-            Utils.AlterWeaponClipSet(false, moveClipset);
+            Utils.AlterWeaponClipSet(false, MoveClipset);
             MC.Task.StopScriptedAnimationTask(Utils.AimAnim, AnimationBlendDelta.SlowBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, AnimationBlendDelta.VerySlowBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.WalkingAnim, AnimationBlendDelta.WalkBlendOut);
@@ -1012,20 +1016,20 @@ namespace DualWield
             {
                 if (Utils.AimAnim == Utils.RPG)
                     return;
-                if (!MC.IsPlayingAnimation(separatedHandAnim))
-                    MC.Task.PlayAnimation(separatedHandAnim, AnimationBlendDelta.FastBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48, 0f);
+                if (!MC.IsPlayingAnimation(SeparatedHandAnim))
+                    MC.Task.PlayAnimation(SeparatedHandAnim, AnimationBlendDelta.FastBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48, 0f);
             }
             else if ((MC.IsInCover || MC.IsGoingIntoCover) && !Utils.IsSwitchingGun(MC) && !MC.IsAiming)
             {
                 Utils.SetInverseKinematics(false);
-                Utils.Request(separatedHandAnim.ClipDictionary, 800);
-                if (!MC.IsPlayingAnimation(separatedHandAnim))
-                    MC.Task.PlayAnimation(separatedHandAnim, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48, 0f);
-                else if (MC.GetAnimationCurrentTime(separatedHandAnim) > 0.2f)
-                    MC.SetAnimationSpeed(separatedHandAnim, 0f);
+                Utils.Request(SeparatedHandAnim.ClipDictionary, 800);
+                if (!MC.IsPlayingAnimation(SeparatedHandAnim))
+                    MC.Task.PlayAnimation(SeparatedHandAnim, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48, 0f);
+                else if (MC.GetAnimationCurrentTime(SeparatedHandAnim) > 0.2f)
+                    MC.SetAnimationSpeed(SeparatedHandAnim, 0f);
                 //GTA.UI.Screen.ShowSubtitle("In-Cover Called" + MC.IsPlayingAnimation(separatedHandAnim), 500);
             }
-            else MC.Task.StopScriptedAnimationTask(separatedHandAnim, AnimationBlendDelta.WalkBlendOut);
+            else MC.Task.StopScriptedAnimationTask(SeparatedHandAnim, AnimationBlendDelta.WalkBlendOut);
 
             //AIM
             if ((MC.IsAiming || noScoping) && !MC.IsReloading && !imReloading && !MC.IsFalling && !MC.IsInAir && !MC.IsGettingUp && !MC.IsVaulting && !MC.IsDucking && !MC.IsPerformingMeleeAction && Shootdodge == 0)
@@ -1061,10 +1065,10 @@ namespace DualWield
                         {
                             MC.SetAnimationSpeed(Utils.WalkingAnim, 0.90f);
 
-                            if (!walkClipset.IsLoaded)
-                                Utils.Request(walkClipset, 800);
+                            if (!WalkClipset.IsLoaded)
+                                Utils.Request(WalkClipset, 800);
                             else
-                                MC.SetMovementClipSet(walkClipset);
+                                MC.SetMovementClipSet(WalkClipset);
                         }
                     }
 
@@ -1181,11 +1185,11 @@ namespace DualWield
             Vector3 gunGrip = ped.Weapons.CurrentWeaponObject.Bones["gun_gripr"].GetPositionOffset(ped.Weapons.CurrentWeaponObject.Position);
             if (ped == ShooterL && ped.Weapons.CurrentWeaponObject.IsAttachedTo(ped))
             {
-                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelLeftHand], gunGrip + aimPosL, aimRotL, false, false, false, true, default);
+                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelLeftHand], gunGrip + AimPosL, AimRotL, false, false, false, true, default);
             }
             else if (ped == ShooterR && ped.Weapons.CurrentWeaponObject.IsAttachedTo(ped))
             {
-                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelRightHand], gunGrip + aimPosR, aimRotR, false, false, false, true, default);
+                ped.Weapons.CurrentWeaponObject.AttachTo(MC.Bones[Bone.SkelRightHand], gunGrip + AimPosR, AimRotR, false, false, false, true, default);
             }
 
             if (ped.BlockPermanentEvents == false)

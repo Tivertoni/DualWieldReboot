@@ -1,4 +1,4 @@
-namespace DualWield
+namespace DualWield.Enums
 {
     public enum ReloadingPhase
     {
