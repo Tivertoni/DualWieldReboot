@@ -904,7 +904,7 @@ namespace DualWield
 
             float scaleHud = 1f;
 
-            bool blinkDraw = (Game.GameTime / 700) % 2 == 0;
+            bool blinkDraw = ((Game.GameTime / 700) & 1 ) == 0;
 
             if (MC_Wpn.Ammo - MC_Wpn.AmmoInClip <= MC_Wpn.MaxAmmoInClip)
             {
