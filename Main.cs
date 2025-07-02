@@ -1159,7 +1159,7 @@ namespace DualWield
             // Adjusted cooldown
             int adjustedCooldown = (int)(recoilCooldown * fpsFactor);
 
-            if (Game.GameTime - lastRecoilTime >= adjustedCooldown && isPressed && GameplayCamera.RelativePitch < 25.6f)
+            if (isPressed && Game.GameTime - lastRecoilTime >= adjustedCooldown && GameplayCamera.RelativePitch < 25.6f)
             {
                 recoilValue = Utils.RecoilVal;
                 if (!isMinigun)
