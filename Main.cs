@@ -926,7 +926,7 @@ namespace DualWield
 
             Hud.HideComponentThisFrame(HudComponent.WeaponIcon);
 
-            var iconData = Utils.WeaponGroupIcon(MC_Wpn.Group);
+            (string textureDict, string textureName)? iconData = Utils.WeaponGroupIcon(MC_Wpn.Group);
 
             if ((LeftMag != 0 || RightMag != 0) && !MC.IsReloading && Config.useCrosshair)
                 Hud.ShowComponentThisFrame(HudComponent.Reticle);
@@ -987,11 +987,11 @@ namespace DualWield
             }
         }
 
-        private void AnimationSystemV2() //fuck clean code, this is easier for me
+        private void AnimationSystemV2() //fuck clean code, this is easier for me EDIT: Lets not "fuck" clean code pls
         {
-            bool rockets = MC_Wpn == WeaponHash.RPG || MC_Wpn == WeaponHash.HomingLauncher || MC_Wpn == WeaponHash.Firework;
+            bool doesCWeaponShootRockets = MC_Wpn == WeaponHash.RPG || MC_Wpn == WeaponHash.HomingLauncher || MC_Wpn == WeaponHash.Firework;
 
-            bool baseCheck = !isMinigun && !rockets;
+            bool baseCheck = !isMinigun && !doesCWeaponShootRockets;
 
             bool noWalkAnim;
             bool noRunAnim;

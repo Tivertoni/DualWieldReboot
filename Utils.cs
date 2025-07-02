@@ -493,9 +493,7 @@ namespace DualWield
 
         public static float Clamp(float value, float min, float max)
         {
-            if (value < min) return min;
-            if (value > max) return max;
-            return value;
+            return value < min ? min : (value > max ? max : value);
         }
 
         private static int ClampToByte(float value) // prevent HUD crash when swapping guns
