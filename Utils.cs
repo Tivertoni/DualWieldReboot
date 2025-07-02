@@ -14,8 +14,8 @@ namespace DualWield
     public static class Utils
     {
         private static string muzzleFx;
-        public static bool surpressed = false;
-        public static Vector3 recoilOffset = Vector3.Zero;
+        public static bool IsSuppressorActive = false;
+        public static Vector3 RecoilOffset = Vector3.Zero;
 
         //Animations
         public static readonly CrClipAsset Normal = new CrClipAsset("wfire_mbahdokek_dualwield@small_gun_core", "wfire_mbahdokek_dualwield_small_gun_sweep");
@@ -34,34 +34,34 @@ namespace DualWield
         public static readonly CrClipAsset MG_Run = new CrClipAsset("wfire_mbahdokek_dualwield@mg_core_rm", "wfire_mbahdokek_dualwield_mg_run");
 
         public static readonly CrClipAsset MiniG = new CrClipAsset("wfire_mbahdokek_dualwield@minigun_core_rm", "wfire_mbahdokek_dualwield_minigun_sweep");
-        public static readonly CrClipAsset MiniG_Idle = new CrClipAsset("wfire_mbahdokek_dualwield@minigun_core_rm", "wfire_mbahdokek_dualwield_minigun_idle");
-        public static readonly CrClipAsset MiniG_Walk = new CrClipAsset("wfire_mbahdokek_dualwield@minigun_core_rm", "wfire_mbahdokek_dualwield_minigun_walk");
-        public static readonly CrClipAsset MiniG_Run = new CrClipAsset("wfire_mbahdokek_dualwield@minigun_core_rm", "wfire_mbahdokek_dualwield_minigun_run");
+        public static readonly CrClipAsset MiniGunIdle = new CrClipAsset("wfire_mbahdokek_dualwield@minigun_core_rm", "wfire_mbahdokek_dualwield_minigun_idle");
+        public static readonly CrClipAsset MiniGunWalk = new CrClipAsset("wfire_mbahdokek_dualwield@minigun_core_rm", "wfire_mbahdokek_dualwield_minigun_walk");
+        public static readonly CrClipAsset MiniGunRun = new CrClipAsset("wfire_mbahdokek_dualwield@minigun_core_rm", "wfire_mbahdokek_dualwield_minigun_run");
 
         public static readonly CrClipAsset RPG = new CrClipAsset("wfire_mbahdokek_dualwield@rpg_core_rm", "wfire_mbahdokek_dualwield_rpg_sweep");
         public static readonly CrClipAsset RPG_Idle = new CrClipAsset("wfire_mbahdokek_dualwield@rpg_core_rm", "wfire_mbahdokek_dualwield_rpg_idle");
         public static readonly CrClipAsset RPG_Walk = new CrClipAsset("wfire_mbahdokek_dualwield@rpg_core_rm", "wfire_mbahdokek_dualwield_rpg_walk");
         public static readonly CrClipAsset RPG_Run = new CrClipAsset("wfire_mbahdokek_dualwield@rpg_core_rm", "wfire_mbahdokek_dualwield_rpg_run");
 
-        public static readonly CrClipAsset LongG = new CrClipAsset("wfire_mbahdokek_dualwield@long_gun_core_rm", "wfire_mbahdokek_dualwield_long_gun_sweep");
-        public static readonly CrClipAsset LongG_Idle = new CrClipAsset("wfire_mbahdokek_dualwield@long_gun_core_rm", "wfire_mbahdokek_dualwield_long_gun_idle");
-        public static readonly CrClipAsset LongG_Walk = new CrClipAsset("wfire_mbahdokek_dualwield@long_gun_core_rm", "wfire_mbahdokek_dualwield_long_gun_walk");
-        public static readonly CrClipAsset LongG_Run = new CrClipAsset("wfire_mbahdokek_dualwield@long_gun_core_rm", "wfire_mbahdokek_dualwield_long_gun_run");
+        public static readonly CrClipAsset LongGun = new CrClipAsset("wfire_mbahdokek_dualwield@long_gun_core_rm", "wfire_mbahdokek_dualwield_long_gun_sweep");
+        public static readonly CrClipAsset LongGunIdle = new CrClipAsset("wfire_mbahdokek_dualwield@long_gun_core_rm", "wfire_mbahdokek_dualwield_long_gun_idle");
+        public static readonly CrClipAsset LongGunWalk = new CrClipAsset("wfire_mbahdokek_dualwield@long_gun_core_rm", "wfire_mbahdokek_dualwield_long_gun_walk");
+        public static readonly CrClipAsset LongGunRun = new CrClipAsset("wfire_mbahdokek_dualwield@long_gun_core_rm", "wfire_mbahdokek_dualwield_long_gun_run");
 
         public static CrClipAsset AimAnim;
         public static CrClipAsset IdleAnim;
         public static CrClipAsset WalkingAnim;
         public static CrClipAsset RunningAnim;
-        public static bool bulletTypeWpn;
-        public static float recoilVal;
+        public static bool BulletTypeWpn;
+        public static float RecoilVal;
 
-        public static WeaponComponentHash[] weaponComponentsHashCache;
+        public static WeaponComponentHash[] WeaponComponentsHashCache;
 
-        private static readonly Random rand = new Random();
+        private static readonly Random Rand = new Random();
         
         public static bool AnimsLoaded()
         {
-            bool loaded = Request(Normal.ClipDictionary, 800) && Request(Gang.ClipDictionary, 800) && Request(MG.ClipDictionary, 800) && Request(RPG.ClipDictionary, 800) && Request(LongG.ClipDictionary, 800) && Request(MiniG.ClipDictionary, 800);
+            bool loaded = Request(Normal.ClipDictionary, 800) && Request(Gang.ClipDictionary, 800) && Request(MG.ClipDictionary, 800) && Request(RPG.ClipDictionary, 800) && Request(LongGun.ClipDictionary, 800) && Request(MiniG.ClipDictionary, 800);
             if (!loaded)
             {
                 Notification.PostTicker("~b~Dual ~y~Wield Custom Animations ~r~not found! ~n~~w~Please recheck animation files installation in: ~n~x64c.rpf/anim/ingame/clip_melee@.rpf", true);
@@ -71,22 +71,22 @@ namespace DualWield
         }
         public static void ReleaseAnims()
         {
-            bool loaded = Normal.ClipDictionary.IsLoaded || Gang.ClipDictionary.IsLoaded || MG.ClipDictionary.IsLoaded || RPG.ClipDictionary.IsLoaded || LongG.ClipDictionary.IsLoaded || MiniG.ClipDictionary.IsLoaded;
+            bool loaded = Normal.ClipDictionary.IsLoaded || Gang.ClipDictionary.IsLoaded || MG.ClipDictionary.IsLoaded || RPG.ClipDictionary.IsLoaded || LongGun.ClipDictionary.IsLoaded || MiniG.ClipDictionary.IsLoaded;
             if (loaded)
             {
                 Normal.ClipDictionary.MarkAsNoLongerNeeded();
                 Gang.ClipDictionary.MarkAsNoLongerNeeded();
                 MG.ClipDictionary.MarkAsNoLongerNeeded();
                 RPG.ClipDictionary.MarkAsNoLongerNeeded();
-                LongG.ClipDictionary.MarkAsNoLongerNeeded();
+                LongGun.ClipDictionary.MarkAsNoLongerNeeded();
                 MiniG.ClipDictionary.MarkAsNoLongerNeeded();
             }
         }
 
         public static void SortPtfx()
         {
-            bulletTypeWpn = WeaponDamageType(MC_Wpn) == 3 || WeaponDamageType(MC_Wpn) == 4;
-            if (!surpressed)
+            BulletTypeWpn = WeaponDamageType(MC_Wpn) == 3 || WeaponDamageType(MC_Wpn) == 4;
+            if (!IsSuppressorActive)
             {
                 if (IsMinigunType(MC_Wpn))
                 {
@@ -119,7 +119,7 @@ namespace DualWield
             if (!(WeaponDamageType(MC_Wpn) != 5 && MC_Wpn.Group != WeaponGroup.Sniper && MC_Wpn != WeaponHash.Widowmaker && (Function.Call<int>(Hash.GET_PED_ORIGINAL_AMMO_TYPE_FROM_WEAPON, MC, MC_Wpn.Hash) != Function.Call<int>(Hash.GET_PED_AMMO_TYPE_FROM_WEAPON, MC, MC_Wpn.Hash))))
                 Function.Call(Hash.SET_PED_SHOOTS_AT_COORD, ped, crosshair.X, crosshair.Y, crosshair.Z, true);
 
-            if (bulletTypeWpn)
+            if (BulletTypeWpn)
             {
                 ParticleEffectAsset core = new ParticleEffectAsset("core");
                 Vector3 gunRot = Vector3.Zero;
@@ -178,12 +178,12 @@ namespace DualWield
 
         public static float NextFloat(float min, float max)
         {
-            return (float)(rand.NextDouble() * (max - min) + min);
+            return (float)(Rand.NextDouble() * (max - min) + min);
         }
 
-        public static void SetIK(bool on_off)
+        public static void SetInverseKinematics(bool state)
         {
-            Function.Call(Hash.SET_PED_CAN_ARM_IK, MC, on_off);
+            Function.Call(Hash.SET_PED_CAN_ARM_IK, MC, state);
         }
 
         public static void ShowPlayerWpn(bool shown)
@@ -196,17 +196,19 @@ namespace DualWield
 
         public static void SortAnim(Weapon reference)
         {
+            const float SMG_LONG_WEAPON_THRESHOLD = 0.44f;
+            
             if (reference.Group == WeaponGroup.AssaultRifle || reference.Group == WeaponGroup.Shotgun || reference.Group == WeaponGroup.Sniper)
             {
-                float WpnLength = reference.Model.Dimensions.frontTopRight.X - reference.Model.Dimensions.rearBottomLeft.X;
-                bool longWpn = WpnLength > 0.78f;
+                float weaponLength = reference.Model.Dimensions.frontTopRight.X - reference.Model.Dimensions.rearBottomLeft.X;
+                bool longWpn = weaponLength > 0.78f;
                 if (longWpn)
                 {
-                    AimAnim = LongG;
-                    IdleAnim = LongG_Idle;
-                    WalkingAnim = LongG_Walk;
-                    RunningAnim = LongG_Run;
-                    recoilVal = 17.5f;
+                    AimAnim = LongGun;
+                    IdleAnim = LongGunIdle;
+                    WalkingAnim = LongGunWalk;
+                    RunningAnim = LongGunRun;
+                    RecoilVal = 17.5f;
                 }
                 else
                 {
@@ -214,21 +216,21 @@ namespace DualWield
                     IdleAnim = NormalIdle;
                     WalkingAnim = NormalWalk;
                     RunningAnim = NormalRun;
-                    recoilVal = 20f;
+                    RecoilVal = 20f;
                 }
 
             }
             else if (reference.Group == WeaponGroup.SMG)
             {
-                float WpnLength = reference.Model.Dimensions.frontTopRight.X - reference.Model.Dimensions.rearBottomLeft.X;
-                bool longWpn = WpnLength > 0.44f;
-                if (longWpn)
+                float weaponLength = reference.Model.Dimensions.frontTopRight.X - reference.Model.Dimensions.rearBottomLeft.X;
+                bool isLongWeapon = weaponLength > SMG_LONG_WEAPON_THRESHOLD;
+                if (isLongWeapon)
                 {
                     AimAnim = Normal;
                     IdleAnim = NormalIdle;
                     WalkingAnim = NormalWalk;
                     RunningAnim = NormalRun;
-                    recoilVal = 10f;
+                    RecoilVal = 10f;
                 }
                 else
                 {
@@ -236,7 +238,7 @@ namespace DualWield
                     IdleAnim = GangIdle;
                     WalkingAnim = GangWalk;
                     RunningAnim = GangRun;
-                    recoilVal = 15f;
+                    RecoilVal = 15f;
                 }
             }
             else if (reference.Group == WeaponGroup.MG)
@@ -245,7 +247,7 @@ namespace DualWield
                 IdleAnim = MG_Idle;
                 WalkingAnim = MG_Walk;
                 RunningAnim = MG_Run;
-                recoilVal = 25f;
+                RecoilVal = 25f;
             }
             else if (reference.Group == WeaponGroup.Heavy)
             {
@@ -255,15 +257,15 @@ namespace DualWield
                     IdleAnim = RPG_Idle;
                     WalkingAnim = RPG_Walk;
                     RunningAnim = RPG_Run;
-                    recoilVal = 30f;
+                    RecoilVal = 30f;
                 }
                 else if (IsMinigunType(reference))
                 {
                     AimAnim = MiniG;
-                    IdleAnim = MiniG_Idle;
-                    WalkingAnim = MiniG_Walk;
-                    RunningAnim = MiniG_Run;
-                    recoilVal = 0f; // disable to prevent glitchy anim
+                    IdleAnim = MiniGunIdle;
+                    WalkingAnim = MiniGunWalk;
+                    RunningAnim = MiniGunRun;
+                    RecoilVal = 0f; // disable to prevent glitchy anim
                 }
                 else if (reference.Hash == WeaponHash.SnowballLauncher || reference.Hash == WeaponHash.CompactGrenadeLauncher || reference.Hash == WeaponHash.GrenadeLauncher || reference.Hash == WeaponHash.GrenadeLauncherSmoke)
                 {
@@ -271,15 +273,15 @@ namespace DualWield
                     IdleAnim = NormalIdle;
                     WalkingAnim = NormalWalk;
                     RunningAnim = NormalRun;
-                    recoilVal = 10f;
+                    RecoilVal = 10f;
                 }
                 else
                 {
-                    AimAnim = LongG;
-                    IdleAnim = LongG_Idle;
-                    WalkingAnim = LongG_Walk;
-                    RunningAnim = LongG_Run;
-                    recoilVal = 20f;
+                    AimAnim = LongGun;
+                    IdleAnim = LongGunIdle;
+                    WalkingAnim = LongGunWalk;
+                    RunningAnim = LongGunRun;
+                    RecoilVal = 20f;
                 }
             }
             else if (reference.Group == WeaponGroup.Pistol)
@@ -289,26 +291,25 @@ namespace DualWield
                 else if (Config.pistolAnim == 2)
                     AimAnim = Gang;
                 else
-                    AimAnim = new Random().Next(2) == 0 ? Normal : Gang;
+                    AimAnim = Rand.Next(2) == 0 ? Normal : Gang;
 
                 if (AimAnim == Normal)
                 {
                     IdleAnim = NormalIdle;
                     WalkingAnim = NormalWalk;
                     RunningAnim = NormalRun;
-                    recoilVal = 10f;
                 }
                 else
                 {
                     IdleAnim = GangIdle;
                     WalkingAnim = GangWalk;
                     RunningAnim = GangRun;
-                    recoilVal = 10f;
                 }
+                RecoilVal = 10f;
             }
             else
             {
-                AimAnim = new CrClipAsset("", "");
+                AimAnim = new CrClipAsset(string.Empty, string.Empty);
                 Logger.Log($"SortAnim has failed to match animation sets to the current weapon");
             }
         }
@@ -319,26 +320,26 @@ namespace DualWield
             Entity targetWpnObj = target.Weapons.CurrentWeaponObject;
             WeaponHash targetWpn = target.Weapons.Current;
             WeaponHash playerWpn = target.Weapons.Current.Hash;
-            foreach (var component in weaponComponentsHashCache) //Thanks to SHVDN NativeMemory
+            foreach (WeaponComponentHash component in WeaponComponentsHashCache) //Thanks to SHVDN NativeMemory
             {
                 if (Function.Call<bool>(Hash.HAS_WEAPON_GOT_WEAPON_COMPONENT, playerWpnObj, component))
                 {
                     Function.Call(Hash.GIVE_WEAPON_COMPONENT_TO_PED, target, targetWpn, component);
-                    int tintCompID = Function.Call<int>(Hash.GET_WEAPON_OBJECT_COMPONENT_TINT_INDEX, playerWpnObj, component);
-                    Function.Call(Hash.SET_WEAPON_OBJECT_COMPONENT_TINT_INDEX, targetWpnObj, component, tintCompID);
+                    int tintCompId = Function.Call<int>(Hash.GET_WEAPON_OBJECT_COMPONENT_TINT_INDEX, playerWpnObj, component);
+                    Function.Call(Hash.SET_WEAPON_OBJECT_COMPONENT_TINT_INDEX, targetWpnObj, component, tintCompId);
                 }
             }
 
-            int tintID = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, MC, playerWpn);
-            Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, target, targetWpn, tintID);
-            int camoID = Function.Call<int>(Hash.GET_PED_WEAPON_CAMO_INDEX, MC, playerWpnObj);
-            Function.Call(Hash.SET_WEAPON_OBJECT_CAMO_INDEX, target, targetWpnObj, camoID);
+            int tintId = Function.Call<int>(Hash.GET_PED_WEAPON_TINT_INDEX, MC, playerWpn);
+            Function.Call(Hash.SET_PED_WEAPON_TINT_INDEX, target, targetWpn, tintId);
+            int camoId = Function.Call<int>(Hash.GET_PED_WEAPON_CAMO_INDEX, MC, playerWpnObj);
+            Function.Call(Hash.SET_WEAPON_OBJECT_CAMO_INDEX, target, targetWpnObj, camoId);
         }
 
         public static void ConflictGetter()
         {
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (var assembly in assemblies)
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (Assembly assembly in assemblies)
             {
                 DodgeType = assembly.GetType("Shootdodge.Main");
                 if (DodgeType != null)
@@ -351,17 +352,13 @@ namespace DualWield
             Conflict = false;
             if (File.Exists("scripts\\More Gore Settings.xml"))
             {
-                XmlDocument MoreGore = new XmlDocument();
-                MoreGore.Load("scripts\\More Gore Settings.xml");
-                XmlNode MGheal = MoreGore.SelectSingleNode("/MoreGore/Options/Healing");
-                if (MGheal != null)
+                XmlDocument moreGore = new XmlDocument();
+                moreGore.Load("scripts\\More Gore Settings.xml");
+                XmlNode mgHeal = moreGore.SelectSingleNode("/MoreGore/Options/Healing");
+                XmlAttribute healingAttrib = mgHeal?.Attributes?["PlayHealingAnimation"];
+                if (healingAttrib != null)
                 {
-                    XmlAttribute HealingAttrib = MGheal.Attributes["PlayHealingAnimation"];
-                    if (HealingAttrib != null)
-                    {
-                        if (bool.TryParse(HealingAttrib.Value, out bool HealingVal))
-                            Conflict = HealingVal;
-                    }
+                    bool.TryParse(healingAttrib.Value, out Conflict);
                 }
             }
         }
@@ -374,10 +371,8 @@ namespace DualWield
                 Script.Wait(0);
                 Notified = true;
             }
-            if (DodgeField != null)
-                Shootdodge = (int)DodgeField.GetValue(null);
-            else
-                Shootdodge = 0;
+
+            Shootdodge = DodgeField != null ? (int)DodgeField.GetValue(null) : 0;
         }
 
         public static bool IsMinigunType(Weapon weapon)
@@ -408,12 +403,7 @@ namespace DualWield
             {
                 return 0.85f;
             }
-            if (AimAnim == RPG)
-            {
-                return 0.90f;
-            }
-
-            return 1f;
+            return AimAnim == RPG ? 0.90f : 1f;
         }
         public static (string textureDict, string textureName)? WeaponGroupIcon(WeaponGroup group)
         {
@@ -463,30 +453,35 @@ namespace DualWield
         {
             try
             {
+                const float BRIGHTNESS_CLAMPED = 0.6f * 255;
                 if (maxAmmoInClip <= 0)
                     return Color.Transparent;
 
-                float ratio = ammoInClip / (float)maxAmmoInClip;
+                float scaledRatio = ammoInClip / (float)maxAmmoInClip * 2f;
+
                 if (IsMinigunType(MC_Wpn))
-                    ratio = (ammoInClip * 2) / (float)maxAmmoInClip;
-                float brightness = 0.6f;
+                    scaledRatio *= 2f;
+                
+                if (scaledRatio > 2f)
+                    scaledRatio = 2f;
+                else if (scaledRatio < 0)
+                {
+                    scaledRatio = 0f;
+                }
 
                 int r, g;
 
-                if (ratio >= 0.5f)
+                if (scaledRatio >= 0.5f)
                 {
-                    // Yellow to Green
-                    float t = (ratio - 0.5f) * 2f;
-                    r = ClampToByte(255 * (1 - t) * brightness);
-                    g = ClampToByte(255 * brightness);
+                    r = ClampToByte(BRIGHTNESS_CLAMPED * (2f - scaledRatio));
+                    g = ClampToByte(BRIGHTNESS_CLAMPED);
                 }
                 else
                 {
-                    // Red to Yellow
-                    float t = ratio * 2f;
-                    r = ClampToByte(255 * brightness);
-                    g = ClampToByte(255 * t * brightness);
+                    r = ClampToByte(BRIGHTNESS_CLAMPED);
+                    g = ClampToByte(BRIGHTNESS_CLAMPED * scaledRatio);
                 }
+
 
                 return Color.FromArgb(r, g, 0);
             }
@@ -578,15 +573,15 @@ namespace DualWield
 
         public static bool IsPedEnteringVehicle(Ped ped) // SHVDN 3.6.0 nightly compatibility
         {
-            var pedType = typeof(Ped);
+            Type pedType = typeof(Ped);
 
-            var isEnteringVeh = pedType.GetProperty("IsEnteringVehicle"); //v3.7.0
+            PropertyInfo isEnteringVeh = pedType.GetProperty("IsEnteringVehicle"); //v3.7.0
             if (isEnteringVeh != null)
             {
                 return (bool)isEnteringVeh.GetValue(ped);
             }
 
-            var isGettingIntoVeh = pedType.GetProperty("IsGettingIntoVehicle"); //fallback
+            PropertyInfo isGettingIntoVeh = pedType.GetProperty("IsGettingIntoVehicle"); //fallback
             if (isGettingIntoVeh != null)
             {
                 return (bool)isGettingIntoVeh.GetValue(ped);
@@ -597,48 +592,46 @@ namespace DualWield
 
         public static class Logger
         {
-            private static readonly string logFilePath = Path.Combine(Config.GetPath(), "DualWield_log.txt");
+            private static readonly string LogFilePath = Path.Combine(Config.GetPath(), "DualWield_log.txt");
 
             static Logger()
             {
-                if (Config.debugLog)
+                if (!Config.debugLog) return;
+                
+                try
                 {
-                    try
+                    using (StreamWriter writer = new StreamWriter(LogFilePath, false))
                     {
-                        using (StreamWriter writer = new StreamWriter(logFilePath, false))
-                        {
-                            writer.WriteLine("===== Dual Wield Reboot Log Started =====");
-                        }
+                        writer.WriteLine("===== Dual Wield Reboot Log Started =====");
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to initialize log: {ex.Message}");
-                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to initialize log: {ex.Message}");
                 }
             }
 
             public static void Empty()
             {
                 if (Config.debugLog)
-                    File.Create(logFilePath).Close();
+                    File.Create(LogFilePath).Close();
             }
 
             public static void Log(string message)
             {
-                if (Config.debugLog)
+                if (!Config.debugLog) return;
+                
+                try
                 {
-                    try
+                    using (StreamWriter writer = new StreamWriter(LogFilePath, true))
                     {
-                        using (StreamWriter writer = new StreamWriter(logFilePath, true))
-                        {
-                            writer.WriteLine($"{DateTime.Now}: {message}");
-                        }
+                        writer.WriteLine($"{DateTime.Now}: {message}");
                     }
-                    catch (Exception ex)
-                    {
+                }
+                catch (Exception ex)
+                {
 
-                        Console.WriteLine($"Logging error: {ex.Message}");
-                    }
+                    Console.WriteLine($"Logging error: {ex.Message}");
                 }
             }
         }

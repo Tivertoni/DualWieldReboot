@@ -46,7 +46,7 @@ namespace DualWield
         private float padButtonTimer = 0f;
         private float padButtonTimer2 = 0f;
 
-        private Model dummy = (Model)PedHash.Famdnf01GMY;
+        private Model dummy = PedHash.Famdnf01GMY;
         public static Ped ShooterL;
         public static Ped ShooterR;
 
@@ -86,7 +86,7 @@ namespace DualWield
             KeyDown += OnKeyDown;
             Utils.Logger.Empty();
             Utils.ConflictGetter();
-            Utils.weaponComponentsHashCache = WeaponComponent.GetAllHashes();
+            Utils.WeaponComponentsHashCache = WeaponComponent.GetAllHashes();
         }
 
         private void OnKeyDown(object sender, KeyEventArgs e)
@@ -169,7 +169,7 @@ namespace DualWield
             if (FPV.Active)
                 animPitchSource = FPV.Camera.Rotation.X + recoilValue;
 
-            Utils.surpressed = MC_Wpn.Components.GetSuppressorComponent().Active;
+            Utils.IsSuppressorActive = MC_Wpn.Components.GetSuppressorComponent().Active;
             Utils.SortPtfx();
 
             //Prevent ped distraction
@@ -211,7 +211,7 @@ namespace DualWield
                 //Weapon change when aiming in FirstPersonView broke the script. Fuck It!
                 if (MC.IsAiming && GameplayCamera.FollowPedCamViewMode == CamViewMode.FirstPerson)
                 {
-                    Utils.SetIK(false);
+                    Utils.SetInverseKinematics(false);
                     Game.DisableControlThisFrame(GTA.Control.SelectWeapon); Game.DisableControlThisFrame(GTA.Control.SelectPrevWeapon); Game.DisableControlThisFrame(GTA.Control.SelectNextWeapon);
                     Hud.HideComponentThisFrame(HudComponent.WeaponWheel);
                 }
@@ -826,7 +826,7 @@ namespace DualWield
         private void EndDualWield()
         {
             Game.Player.ForcedAim = false;
-            Utils.SetIK(false);
+            Utils.SetInverseKinematics(false);
             Utils.AlterWeaponClipSet(false, moveClipset);
             MC.Task.StopScriptedAnimationTask(Utils.AimAnim, AnimationBlendDelta.SlowBlendOut);
             MC.Task.StopScriptedAnimationTask(Utils.IdleAnim, AnimationBlendDelta.VerySlowBlendOut);
@@ -1014,7 +1014,7 @@ namespace DualWield
             }
             else if ((MC.IsInCover || MC.IsGoingIntoCover) && !Utils.IsSwitchingGun(MC) && !MC.IsAiming)
             {
-                Utils.SetIK(false);
+                Utils.SetInverseKinematics(false);
                 Utils.Request(separatedHandAnim.ClipDictionary, 800);
                 if (!MC.IsPlayingAnimation(separatedHandAnim))
                     MC.Task.PlayAnimation(separatedHandAnim, AnimationBlendDelta.VerySlowBlendIn, AnimationBlendDelta.WalkBlendOut, -1, (AnimationFlags)48, 0f);
@@ -1030,7 +1030,7 @@ namespace DualWield
                 if (!MC.IsPlayingAnimation(Utils.AimAnim))
                     MC.Task.PlayAnimation(Utils.AimAnim, new AnimationBlendDelta(10f), new AnimationBlendDelta(-1f), -1, AnimationFlags.UpperBodyOnly | (AnimationFlags)49 | AnimationFlags.Loop, 0f);
 
-                Utils.SetIK(false);
+                Utils.SetInverseKinematics(false);
             }
             else if (MC.IsPlayingAnimation(Utils.AimAnim))
             {
@@ -1054,7 +1054,7 @@ namespace DualWield
                     }
                     if (MC.IsPlayingAnimation(Utils.WalkingAnim) && !Config.useSecondary)
                     {
-                        if (Utils.WalkingAnim == Utils.GangWalk || Utils.WalkingAnim == Utils.MG_Walk || Utils.WalkingAnim == Utils.LongG_Walk) // don't merge if, this is to fix sassy walking anim because half-body mode
+                        if (Utils.WalkingAnim == Utils.GangWalk || Utils.WalkingAnim == Utils.MG_Walk || Utils.WalkingAnim == Utils.LongGunWalk) // don't merge if, this is to fix sassy walking anim because half-body mode
                         {
                             MC.SetAnimationSpeed(Utils.WalkingAnim, 0.90f);
 
@@ -1135,7 +1135,7 @@ namespace DualWield
                     MC.SetAnimationCurrentTime(Utils.AimAnim, newTime);
                 }
 
-                if (Utils.AimAnim == Utils.LongG)
+                if (Utils.AimAnim == Utils.LongGun)
                     GameplayCamera.SetThirdPersonCameraRelativePitchLimitsThisUpdate(-50f, 34f);
                 else if (Utils.AimAnim == Utils.Normal)
                     GameplayCamera.SetThirdPersonCameraRelativePitchLimitsThisUpdate(-55f, 35f);
@@ -1161,7 +1161,7 @@ namespace DualWield
 
             if (Game.GameTime - lastRecoilTime >= adjustedCooldown && isPressed && GameplayCamera.RelativePitch < 25.6f)
             {
-                recoilValue = Utils.recoilVal;
+                recoilValue = Utils.RecoilVal;
                 if (!isMinigun)
                 {
                     MC.Task.PlayAnimation(Utils.AimAnim, AnimationBlendDelta.SlowBlendIn, new AnimationBlendDelta(-1f), -1, AnimationFlags.Secondary | (AnimationFlags)48 | AnimationFlags.Loop, Utils.MapPitchToPhase(animPitchSource, 0f, Utils.GetAimAnimSpeedByClipAsset()));
