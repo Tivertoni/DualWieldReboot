@@ -33,16 +33,13 @@ namespace DualWield
         private int RightMag;
         private ReloadingPhase imReloadingPhase = ReloadingPhase.NotReloading;
         private int snipingEndTime = 0;
-        private readonly int shootReadyDelay = 600; //wait for aiming anim to finish pointing gun
-        private readonly int aimExitDelay = 800; //hold crosshair for this long after done shooting
 
-        private const int recoilCooldown = 180;
         private int lastRecoilTime = 0;
 
         private float animPitchSource;
         private float recoilValue;
         private float reloadTimer = 0f;
-        readonly float reloadDelay = 0.25f;
+
         private float padButtonTimer = 0f;
         private float padButtonTimer2 = 0f;
 
@@ -80,6 +77,12 @@ namespace DualWield
         public static bool Notified = false;
         public static float ikRecoil = 1f;
 
+        
+        private const float RELOAD_DELAY = 0.25f;
+        private const int RECOIL_COOLDOWN = 180;
+        
+        private const int SHOOT_READY_DELAY = 600; //wait for aiming anim to finish pointing gun
+        private const int AIM_EXIT_DELAY = 800; //hold crosshair for this long after done shooting
         public Main()
         {
             Tick += OnTick;
@@ -263,7 +266,7 @@ namespace DualWield
                     {
                         reloadTimer += Game.LastFrameTime;
 
-                        if (reloadTimer >= reloadDelay && !MC.IsReloading)
+                        if (reloadTimer >= RELOAD_DELAY && !MC.IsReloading)
                         {
                             if (imReloadingPhase == ReloadingPhase.ReloadingLeft && rightNotFull)
                             {
@@ -382,7 +385,7 @@ namespace DualWield
                     }
 
                     //SHOOTING
-                    if (aiming && aimStartTime.HasValue && Game.GameTime - aimStartTime.Value >= shootReadyDelay)
+                    if (aiming && aimStartTime.HasValue && Game.GameTime - aimStartTime.Value >= SHOOT_READY_DELAY)
                     {
                         if (MC.IsReloading && imReloading)
                             return;
@@ -438,7 +441,7 @@ namespace DualWield
                             if (!aimReleaseTime.HasValue)
                                 aimReleaseTime = Game.GameTime;
 
-                            if (Game.GameTime - aimReleaseTime.Value >= aimExitDelay)
+                            if (Game.GameTime - aimReleaseTime.Value >= AIM_EXIT_DELAY)
                             {
                                 Game.Player.ForcedAim = false;
                                 aiming = false;
@@ -1157,7 +1160,7 @@ namespace DualWield
             float fpsFactor = Game.FPS < 30f ? Game.FPS / 15f : 1f; //15f Represents the FPS-Target
 
             // Adjusted cooldown
-            int adjustedCooldown = (int)(recoilCooldown * fpsFactor);
+            int adjustedCooldown = (int)(RECOIL_COOLDOWN * fpsFactor);
 
             if (isPressed && Game.GameTime - lastRecoilTime >= adjustedCooldown && GameplayCamera.RelativePitch < 25.6f)
             {
