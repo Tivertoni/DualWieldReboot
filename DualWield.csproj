@@ -55,7 +55,7 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="ScriptHookVDotNet3, Version=3.6.0.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Games\GTAV\ScriptHookVDotNet3.dll</HintPath>
+      <HintPath>..\..\..\Desktop\ScriptHookVDotNet3.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
@@ -63,6 +63,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Enums\ReloadingPhase.cs" />
     <Compile Include="FPCam.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="Config.cs" />
