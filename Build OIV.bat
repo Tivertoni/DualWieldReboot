@@ -7,8 +7,14 @@ set "SEVENZIP=7z"
 REM === CLEANUP OLD FILE ===
 if exist "%DEST%" del "%DEST%"
 
-REM === COMPRESS SOURCE TO OIV (ZIP FORMAT) ===
-"%SEVENZIP%" a -tzip "%DEST%" "%SOURCE%\*" -mx9 -y
+REM === CHANGE TO SOURCE DIRECTORY ===
+pushd "%SOURCE%"
+
+REM === COMPRESS CONTENTS ONLY (NOT FOLDER ITSELF) ===
+"%SEVENZIP%" a -tzip "..\%DEST%" * -mx9 -y
+
+REM === RETURN TO ORIGINAL DIRECTORY ===
+popd
 
 echo.
 echo Done! Created OIV "%DEST%"
