@@ -11,8 +11,5 @@
 **/bin/
 **/obj/
 
-# Ignore project files if needed
-/source/DualWield.csproj
-
 # Ignore generated OIV packages
 *.oiv
