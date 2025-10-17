@@ -13,3 +13,5 @@
 
 # Ignore generated OIV packages
 *.oiv
+
+resources/content/DualWield.dll
