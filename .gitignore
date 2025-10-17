@@ -2,8 +2,8 @@
 /.idea
 /.git
 
-/source/bin
-/source/obj
+/bin
+/obj
 /source/DualWield.csproj
 
 *.oiv
