@@ -1,9 +1,18 @@
-﻿/.vs
-/.idea
-/.git
+﻿# Ignore all .vs folders recursively
+**/.vs/
 
-/bin
-/obj
+# Ignore IDE/editor files
+**/.idea/
+
+# Ignore Git metadata in nested repos
+**/.git/
+
+# Ignore build output directories
+**/bin/
+**/obj/
+
+# Ignore project files if needed
 /source/DualWield.csproj
 
+# Ignore generated OIV packages
 *.oiv
