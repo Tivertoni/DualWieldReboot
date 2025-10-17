@@ -1,8 +1,9 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
-
-/.vs
+﻿/.vs
 /.idea
-/bin
-/obj
+/.git
+
+/source/bin
+/source/obj
+/source/DualWield.csproj
+
+*.oiv
